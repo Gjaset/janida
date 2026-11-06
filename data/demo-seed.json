@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "almacen": "db.json (mock). Reemplazable por base de datos",
+    "nota": "Datos de demostración claramente marcados.",
+    "version": 1
+  },
+  "counters": { "orderSeq": 0 },
+  "products": [
+    {
+      "id": "p-tempo-red",
+      "name": "Tempo Red",
+      "variety": "Tempo",
+      "type": "standard",
+      "colorFamily": "Rojo",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 18.5,
+      "packagesAvailable": 240,
+      "grade": "Extra 55 cm",
+      "description": "Variedad estándar de flor grande con un rojo intenso y uniforme, pétalos firmes y excelente post-cosecha. El clavel rojo más pedido por el canal mayorista de Miami; ideal para aniversarios y Día de la Madre.",
+      "galleryUrls": [
+        "/demo-flowers/tempo-red-1.svg",
+        "/demo-flowers/tempo-red-2.svg",
+        "/demo-flowers/tempo-red-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-01-15T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-baltico-white",
+      "name": "Baltico White",
+      "variety": "Baltico",
+      "type": "standard",
+      "colorFamily": "Blanco",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 19.0,
+      "packagesAvailable": 180,
+      "grade": "Extra 55 cm",
+      "description": "Blanco puro de pétalos gruesos y centro compacto; la base de toda paleta nupcial y de eventos corporativos. Alta resistencia al transporte aéreo con cadena de frío, lo que la vuelve preferida para bodas premium.",
+      "galleryUrls": [
+        "/demo-flowers/baltico-white-1.svg",
+        "/demo-flowers/baltico-white-2.svg",
+        "/demo-flowers/baltico-white-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-02-02T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-quicksand-pink",
+      "name": "Quicksand Rosado",
+      "variety": "Quicksand",
+      "type": "standard",
+      "colorFamily": "Rosa",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 18.0,
+      "packagesAvailable": 160,
+      "grade": "Extra 55 cm",
+      "description": "Tono rosado empolvado, muy apreciado para diseño floral romántico y vintage. Flores con buen diámetro y tallos rectos; presentan buen rendimiento en vajilla (vase life) de 12 a 15 días.",
+      "galleryUrls": [
+        "/demo-flowers/quicksand-pink-1.svg",
+        "/demo-flowers/quicksand-pink-2.svg",
+        "/demo-flowers/quicksand-pink-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-02-18T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-trapz-fucsia",
+      "name": "Trapz Fucsia",
+      "variety": "Trapz",
+      "type": "standard",
+      "colorFamily": "Fucsia",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 19.5,
+      "packagesAvailable": 60,
+      "grade": "Extra 55 cm",
+      "description": "Fucsia vibrante de temporada alta; producción limitada, la más solicitada para el canal de bodas en Estados Unidos por su color intenso y su consistencia lote a lote (misma variedad y color).",
+      "galleryUrls": [
+        "/demo-flowers/trapz-fucsia-1.svg",
+        "/demo-flowers/trapz-fucsia-2.svg",
+        "/demo-flowers/trapz-fucsia-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-03-05T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-barca-spray",
+      "name": "Barca Mini (Spray)",
+      "variety": "Barca",
+      "type": "spray",
+      "colorFamily": "Fucsia",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 17.5,
+      "packagesAvailable": 300,
+      "grade": "Spray 50 cm",
+      "description": "Mini clavel tipo spray con 5 a 7 flores por tallo, color rosado intenso. Muy rentable para el canal de abarrotes y supermercados en Estados Unidos gracias a su volumen por tallo y su durabilidad.",
+      "galleryUrls": [
+        "/demo-flowers/barca-spray-1.svg",
+        "/demo-flowers/barca-spray-2.svg",
+        "/demo-flowers/barca-spray-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-03-20T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-omea-lilac",
+      "name": "Omea Lila (Spray)",
+      "variety": "Omea",
+      "type": "spray",
+      "colorFamily": "Lila",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 17.0,
+      "packagesAvailable": 210,
+      "grade": "Spray 50 cm",
+      "description": "Lila suave, rama multi-flor con excelente apertura escalonada. Es la variedad ideal para diseño de arreglos mixtos, ramilletes premium y tarjetas de tienda minorista con buen margen.",
+      "galleryUrls": [
+        "/demo-flowers/omea-lilac-1.svg",
+        "/demo-flowers/omea-lilac-2.svg",
+        "/demo-flowers/omea-lilac-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-04-10T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-domingo-red",
+      "name": "Domingo Rojo",
+      "variety": "Domingo",
+      "type": "standard",
+      "colorFamily": "Rojo",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 18.2,
+      "packagesAvailable": 120,
+      "grade": "Sup. 55 cm",
+      "description": "Rojo cereza brillante, flor grande de cabeza firme y tallos robustos. Certificada para transporte aéreo en cajas 1/4 y 1/2 con cadena de frío constante; excelente para San Valentín.",
+      "galleryUrls": [
+        "/demo-flowers/domingo-red-1.svg",
+        "/demo-flowers/domingo-red-2.svg",
+        "/demo-flowers/domingo-red-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-05-01T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    },
+    {
+      "id": "p-loreto-picotee",
+      "name": "Loreto Picotee (Spray)",
+      "variety": "Loreto",
+      "type": "spray",
+      "colorFamily": "Blanco",
+      "presentation": "Paquete de 200 tallos",
+      "packageSize": 200,
+      "priceUSD": 18.8,
+      "packagesAvailable": 70,
+      "grade": "Spray 50 cm",
+      "description": "Bicolor blanco con borde rosado tipo picotee. La variedad bicolor más buscada para bodas y alta decoración en Estados Unidos; producción limitada por su proceso de selección manual.",
+      "galleryUrls": [
+        "/demo-flowers/loreto-picotee-1.svg",
+        "/demo-flowers/loreto-picotee-2.svg",
+        "/demo-flowers/loreto-picotee-3.svg",
+        "/demo-flowers/campo-janida.svg"
+      ],
+      "active": true,
+      "createdAt": "2025-05-20T14:00:00.000Z",
+      "updatedAt": "2025-06-01T10:00:00.000Z"
+    }
+  ],
+  "orders": [],
+  "payments": [],
+  "contacts": []
+}

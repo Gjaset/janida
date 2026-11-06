@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Entorno (variables con credenciales del admin y tasa de cambio)
+.env
+.env.local
+.env.*.local
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Almacén de datos en runtime (se genera desde data/demo-seed.json)
+data/db.json
+
+# Logs
+npm-debug.log*
+*.log

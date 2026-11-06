@@ -1,0 +1,26 @@
+{
+  "name": "janida-sas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sitio corporativo + catálogo + carrito + checkout simulado + panel admin para JANIDA SAS (exportadora colombiana de claveles hacia Estados Unidos).",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "demo:reset": "node ./scripts/reset-demo-data.mjs",
+    "demo:images": "node ./scripts/make-svg-images.mjs",
+    "hash:password": "node ./scripts/hash-password.mjs"
+  },
+  "dependencies": {
+    "next": "15.5.6",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" font-family="Georgia, serif">
+  <rect width="960" height="640" fill="#EEEAE2"/>
+  <ellipse cx="480" cy="330" rx="150" ry="120" fill="#DCD4C6"/>
+  <text x="480" y="360" text-anchor="middle" font-size="30" fill="#8A8375">Imagen no disponible</text>
+  <text x="480" y="400" text-anchor="middle" font-size="19" fill="#9A9284" letter-spacing="2">JANIDA SAS · demo</text>
+</svg>
