@@ -1,8 +1,9 @@
 // ============================================================
-// ALMACÉN DE DATOS (mock, sin base de datos)
+// ALMACÉN DE DATOS (sin base de datos)
 // ------------------------------------------------------------
 // Implementación actual: archivo JSON en `data/db.json`,
-// sembrado la primera vez desde `data/demo-seed.json`.
+// sembrado la primera vez desde `data/demo-seed.json`
+// (generado por scripts/seed.js).
 //
 // Todo el acceso a datos de la app pasa por este módulo, de
 // forma que migrar a una base de datos real (PostgreSQL,
@@ -14,20 +15,35 @@ import path from "node:path";
 import { DATA_DIR } from "./config";
 import type {
   ContactMessage,
+  Customer,
   Order,
-  PaymentIntent,
+  OrderItem,
   Product,
+  Settings,
+  TrackingEvent,
 } from "./types";
 
 const DB_FILE = path.join(DATA_DIR, "db.json");
-const SEED_FILE = path.join(DATA_DIR, "demo-seed.json");
+/**
+ * Semilla SIEMPRE en el directorio de despliegue (cwd-relative):
+ * - Local: `data/demo-seed.json` junto al código.
+ * - Vercel: se incluye en el bundle vía outputFileTracingIncludes
+ *   y se lee del cwd de la función; las ESCRITuras van a /tmp
+ *   (DATA_DIR), nunca al origen.
+ */
+const SEED_FILE = process.env.DATA_SEED
+  ? process.env.DATA_SEED
+  : path.join(process.cwd(), "data", "demo-seed.json");
 
 export interface Db {
   meta: Record<string, unknown>;
-  counters: { orderSeq: number };
+  counters: { orderSeq: number; invoiceSeq: number };
+  settings: Settings;
   products: Product[];
-  orders: Order[];
-  payments: PaymentIntent[];
+  customers: Customer[];
+  orders: Order[]; // pedidos (cabecera)
+  order_items: OrderItem[]; // líneas de pedido, referencian orderId
+  tracking_events: TrackingEvent[]; // eventos del seguimiento
   contacts: ContactMessage[];
 }
 
@@ -51,9 +67,32 @@ async function ensureSeeded(): Promise<void> {
   try {
     await fsp.access(DB_FILE);
   } catch {
-    // Primera ejecución (o tras `npm run demo:reset`): copiar semilla.
-    const seed = await fsp.readFile(SEED_FILE, "utf-8");
-    await fsp.writeFile(DB_FILE, seed, "utf-8");
+    // Primera ejecución (o tras `npm run seed` + reset): copiar semilla.
+    try {
+      const seed = await fsp.readFile(SEED_FILE, "utf-8");
+      await fsp.writeFile(DB_FILE, seed, "utf-8");
+    } catch {
+      // Semilla no accesible (p. ej. bundle de Vercel sin data/):
+      // crear un almacén vacío válido para no tumbar la función.
+      await fsp.writeFile(
+        DB_FILE,
+        JSON.stringify({
+          meta: { note: "semilla no encontrada en este build" },
+          counters: { orderSeq: 0, invoiceSeq: 0 },
+          settings: {
+            referenceCostBoxCOP: 75000,
+            exchangeRateCOP: 3800,
+          },
+          products: [],
+          customers: [],
+          orders: [],
+          order_items: [],
+          tracking_events: [],
+          contacts: [],
+        }),
+        "utf-8"
+      );
+    }
   }
   seededOnce = true;
 }
@@ -87,7 +126,7 @@ export async function updateDb(
   });
 }
 
-/** Restaura los datos de demostración (destructivo) */
+/** Restaura los datos de la semilla (destructivo) */
 export async function resetToSeed(): Promise<void> {
   return enqueue(async () => {
     await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -105,9 +144,7 @@ export async function listProducts(opts?: {
 }): Promise<Product[]> {
   const db = await readDb();
   const products = [...db.products];
-  if (!opts?.includeInactive) {
-    return products.filter((p) => p.active);
-  }
+  if (!opts?.includeInactive) return products.filter((p) => p.active);
   return products;
 }
 
@@ -116,7 +153,34 @@ export async function getProduct(id: string): Promise<Product | undefined> {
   return db.products.find((p) => p.id === id);
 }
 
+export async function listCustomers(): Promise<Customer[]> {
+  const db = await readDb();
+  return db.customers;
+}
+
 export async function listOrders(): Promise<Order[]> {
   const db = await readDb();
   return db.orders;
+}
+
+export async function getOrder(id: string): Promise<Order | undefined> {
+  const db = await readDb();
+  return db.orders.find((o) => o.id === id);
+}
+
+export async function itemsOfOrder(orderId: string): Promise<OrderItem[]> {
+  const db = await readDb();
+  return db.order_items.filter((i) => i.orderId === orderId);
+}
+
+export async function eventsOfOrder(orderId: string): Promise<TrackingEvent[]> {
+  const db = await readDb();
+  return db.tracking_events
+    .filter((e) => e.orderId === orderId)
+    .sort((a, b) => a.at.localeCompare(b.at));
+}
+
+export async function getSettings(): Promise<Settings> {
+  const db = await readDb();
+  return db.settings;
 }

@@ -200,7 +200,7 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 .product-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
-.product-card .ph { aspect-ratio: 4 / 2.9; background: var(--surface-warm); cursor: pointer; }
+.product-card .ph { aspect-ratio: 4 / 3; background: var(--surface-warm); cursor: pointer; display: block; }
 .product-card .ph img { width: 100%; height: 100%; object-fit: cover; }
 .product-card .body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .product-card .name { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; color: var(--brand-strong); }
@@ -222,10 +222,10 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 }
 .modal .modal-head { display: flex; justify-content: space-between; align-items: start; gap: 14px; margin-bottom: 14px; }
 .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--ink-faint); cursor: pointer; line-height: 1; }
-.gallery-main { border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-warm); aspect-ratio: 16/9.5; }
-.gallery-main img { width: 100%; height: 100%; object-fit: cover; }
+.gallery-main { border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-warm); aspect-ratio: 4/3; }
+.gallery-main img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gallery-thumbs { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-.gallery-thumbs img { width: 92px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
+.gallery-thumbs img { width: 84px; height: 63px; /* 4:3, igual que la foto principal */ object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
 .gallery-thumbs img.selected { border-color: var(--accent); }
 .specs { list-style: none; padding: 0; margin: 14px 0; font-size: 0.92rem; color: var(--ink-soft); }
 .specs li { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
@@ -246,7 +246,7 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 .cart-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-1); }
 .cart-line { display: grid; grid-template-columns: 108px 1fr auto auto; gap: 16px; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--line); }
 .cart-line:last-child { border-bottom: none; }
-.cart-line img { width: 108px; height: 74px; object-fit: cover; border-radius: var(--radius-sm); }
+.cart-line img { width: 108px; height: 81px; /* 4:3 */ object-fit: cover; border-radius: var(--radius-sm); display: block; }
 .cart-line .name { font-family: var(--font-serif); font-weight: 600; color: var(--brand-strong); }
 .cart-line .meta { font-size: 0.8rem; color: var(--ink-soft); }
 .cart-line .qty-col { display: flex; flex-direction: column; gap: 5px; align-items: center; }
@@ -369,7 +369,7 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: middle; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table td.strong { color: var(--ink); font-weight: 600; }
-.data-table img.thumb { width: 52px; height: 38px; object-fit: cover; border-radius: 6px; }
+.data-table img.thumb { width: 52px; height: 39px; /* 4:3 */ object-fit: cover; border-radius: 6px; }
 .table-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
 .timeline { list-style: none; margin: 0; padding: 0; }
@@ -387,7 +387,7 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 .gallery-editor { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; background: var(--surface-warm); }
 .gallery-editor ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .gallery-editor li { display: flex; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; overflow: hidden; }
-.gallery-editor li img { width: 44px; height: 30px; object-fit: cover; border-radius: 4px; flex: none; }
+.gallery-editor li img { width: 40px; height: 30px; /* 4:3 */ object-fit: cover; border-radius: 4px; flex: none; }
 .gallery-editor li code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); }
 .gallery-editor li button { margin-left: auto; flex: none; }
 .url-add { display: flex; gap: 8px; }
@@ -414,7 +414,7 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
   .main-nav { margin-left: 0; width: 100%; justify-content: flex-start; gap: 14px; overflow-x: auto; }
   .hero { padding: 54px 0 50px; }
   .cart-line { grid-template-columns: 84px 1fr; grid-template-rows: auto auto; }
-  .cart-line img { width: 84px; height: 60px; }
+  .cart-line img { width: 84px; height: 63px; /* 4:3 */ }
   .cart-line .qty-col { justify-self: start; }
   .cart-line .line-total { grid-column: 2; text-align: left; }
   .form-grid { grid-template-columns: 1fr; }
@@ -423,4 +423,110 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
   .admin-topbar .tabs { margin-left: 0; width: 100%; }
   .site-footer .inner { grid-template-columns: 1fr; }
   .data-table { display: block; overflow-x: auto; }
+}
+
+/* ============================================================
+   i18n · Seguimiento · Checkout B2B · Detalle (secciones nuevas)
+   ============================================================ */
+
+/* ---- Botón de idioma en el encabezado ---- */
+.lang-toggle {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--brand-strong);
+  background: var(--surface);
+  transition: background 0.15s, border-color 0.15s;
+}
+.lang-toggle:hover {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+/* ---- Timeline vertical de seguimiento ----
+   current = rosa clavel · done = verde · pending = gris */
+.track-timeline {
+  position: relative;
+}
+.track-timeline li {
+  position: relative;
+  padding: 0 0 22px 34px;
+  border-left: 2px solid var(--line-strong);
+  margin-left: 10px;
+}
+.track-timeline li:last-child {
+  border-left-color: transparent;
+  padding-bottom: 4px;
+}
+.track-timeline li::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  border: 3px solid var(--bg);
+}
+.track-timeline li.pending {
+  color: var(--ink-faint);
+}
+.track-timeline li.pending::before {
+  background: var(--line-strong);
+}
+.track-timeline li.done {
+  color: var(--ink);
+}
+.track-timeline li.done::before {
+  background: var(--ok);
+}
+.track-timeline li.current {
+  color: var(--ink);
+}
+.track-timeline li.current::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.track-timeline li.cancelled::before {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px var(--danger-soft);
+}
+
+/* ---- Tarjeta de condiciones de pago (checkout) ---- */
+.pay-option {
+  position: relative;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.pay-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--shadow-2);
+}
+.pay-option.selected h3 {
+  color: var(--accent-deep);
+}
+
+/* ---- Detalle de producto: colapsar a una columna ---- */
+.detail-layout {
+  width: 100%;
+}
+@media (max-width: 940px) {
+  .detail-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+
+/* ---- Nota informativa ---- */
+.note {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+}
+
+/* ---- Dashboard: tarjeta ancha y fila de acciones ---- */
+.dash-card.full {
+  grid-column: 1 / -1;
 }

@@ -1,6 +1,7 @@
 // PUT/DELETE /api/admin/products/[id]
-// PUT: edición completa (incluye disponibilidad en paquetes, precio
-// por paquete y galería de URLs). DELETE: elimina el producto.
+// PUT: edición completa (bilingüe, cajas, precio USD por caja,
+// costo COP por caja, disponibilidad en cajas y galería de URLs).
+// DELETE: elimina el producto.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-api";
 import { productAdminSchema } from "@/lib/validation";
@@ -33,16 +34,19 @@ export async function PUT(
     const p = db.products.find((x) => x.id === id);
     if (!p) return;
     found = true;
-    p.name = parsed.data.name;
+    p.name_en = parsed.data.name_en;
+    p.name_es = parsed.data.name_es;
+    p.desc_en = parsed.data.desc_en;
+    p.desc_es = parsed.data.desc_es;
     p.variety = parsed.data.variety;
     p.type = parsed.data.type;
     p.colorFamily = parsed.data.colorFamily;
-    p.presentation = parsed.data.presentation;
-    p.packageSize = parsed.data.packageSize;
-    p.priceUSD = parsed.data.priceUSD;
-    p.packagesAvailable = parsed.data.packagesAvailable;
+    p.stemsPerBox = parsed.data.stemsPerBox;
+    p.minOrderBoxes = parsed.data.minOrderBoxes;
+    p.pricePerBoxUSD = parsed.data.pricePerBoxUSD;
+    p.costPerBoxCOP = parsed.data.costPerBoxCOP;
+    p.stockBoxes = parsed.data.stockBoxes;
     p.grade = parsed.data.grade;
-    p.description = parsed.data.description;
     p.galleryUrls = parsed.data.galleryUrls;
     p.active = parsed.data.active;
     p.updatedAt = new Date().toISOString();

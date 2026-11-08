@@ -1,8 +1,10 @@
 "use client";
 // ============================================================
 // Proveedores de cliente:
-// 1) CartProvider — carrito persistente (localStorage) en PAQUETES
-// 2) CurrencyProvider — tasa de cambio USD→COP desde /api/meta
+// 1) LangProvider — diccionario i18n inyectado por el layout
+//    (servidor lee la cookie y entrega el diccionario activo)
+// 2) CartProvider — carrito persistente (localStorage) en CAJAS
+// 3) RateProvider — tasa USD→COP desde /api/meta
 // ============================================================
 import {
   createContext,
@@ -13,33 +15,75 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { Lang } from "@/lib/i18n";
 
-// ---------------- Carrito ----------------
+// ---------------- i18n (colección inyectada del servidor) ----------------
+export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
+interface LangApi {
+  lang: Lang;
+  t: TranslateFn;
+}
+
+const LangContext = createContext<LangApi>({
+  lang: "en",
+  t: (key) => key,
+});
+
+export function LangProvider({
+  children,
+  lang,
+  dict,
+}: {
+  children: ReactNode;
+  lang: Lang;
+  dict: Record<string, string>;
+}) {
+  const t = useCallback<TranslateFn>(
+    (key, vars) => {
+      let text = dict[key] ?? key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          text = text.replaceAll(`{${k}}`, String(v));
+        }
+      }
+      return text;
+    },
+    [dict]
+  );
+  const api = useMemo(() => ({ lang, t }), [lang, t]);
+  return <LangContext.Provider value={api}>{children}</LangContext.Provider>;
+}
+
+/** Textos dentro de componentes cliente (público) */
+export function useLang(): LangApi {
+  return useContext(LangContext);
+}
+
+// ---------------- Carrito (en CAJAS enteras) ----------------
 export interface CartItem {
   productId: string;
-  /** Número de paquetes (SIEMPRE entero ≥ 1; venta por paquetes de 200) */
-  packages: number;
+  /** Cajas enteras (SIEMPRE ≥ 1; cada caja es cerrada de 200 tallos) */
+  boxes: number;
 }
 
 interface CartApi {
   items: CartItem[];
   hydrated: boolean;
-  /** suma de paquetes en el carrito */
-  totalPackages: number;
-  add: (productId: string, packages?: number) => void;
-  setPackages: (productId: string, packages: number) => void;
+  totalBoxes: number;
+  add: (productId: string, boxes?: number) => void;
+  setBoxes: (productId: string, boxes: number) => void;
   remove: (productId: string) => void;
   clear: () => void;
 }
 
 const CartContext = createContext<CartApi | null>(null);
-const STORAGE_KEY = "janida.cart.v1";
+const STORAGE_KEY = "janida.cart.v2";
 
 function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
-  // Hidratación desde localStorage (solo navegador)
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -49,9 +93,9 @@ function CartProvider({ children }: { children: ReactNode }) {
           setItems(
             parsed
               .filter((i) => i && typeof i.productId === "string")
-              // La venta es únicamente por paquetes: enteros positivos
-              .filter((i) => Number.isInteger(i.packages) && i.packages >= 1)
-              .map((i) => ({ productId: i.productId, packages: i.packages }))
+              // venta únicamente por cajas enteras
+              .filter((i) => Number.isInteger(i.boxes) && i.boxes >= 1)
+              .map((i) => ({ productId: i.productId, boxes: i.boxes }))
           );
         }
       }
@@ -61,33 +105,31 @@ function CartProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Persistencia
   useEffect(() => {
     if (!hydrated) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      // almacenamiento lleno o bloqueado: se ignora en demo
+      // almacenamiento lleno o bloqueado: se ignora
     }
   }, [items, hydrated]);
 
-  const add = useCallback((productId: string, packages = 1) => {
+  const add = useCallback((productId: string, boxes = 1) => {
     setItems((prev) => {
       const found = prev.find((i) => i.productId === productId);
       if (found) {
         return prev.map((i) =>
-          i.productId === productId ? { ...i, packages: i.packages + packages } : i
+          i.productId === productId ? { ...i, boxes: i.boxes + boxes } : i
         );
       }
-      return [...prev, { productId, packages }];
+      return [...prev, { productId, boxes }];
     });
   }, []);
 
-  const setPackages = useCallback((productId: string, packages: number) => {
-    // Se exige entero ≥ 1: no se permite venta por unidad ni fracciones
-    const n = Math.max(1, Math.round(Number(packages)));
+  const setBoxes = useCallback((productId: string, boxes: number) => {
+    const n = Math.max(1, Math.round(Number(boxes)));
     setItems((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, packages: n } : i))
+      prev.map((i) => (i.productId === productId ? { ...i, boxes: n } : i))
     );
   }, []);
 
@@ -97,14 +139,11 @@ function CartProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => setItems([]), []);
 
-  const totalPackages = useMemo(
-    () => items.reduce((a, i) => a + i.packages, 0),
-    [items]
-  );
+  const totalBoxes = useMemo(() => items.reduce((a, i) => a + i.boxes, 0), [items]);
 
   const api = useMemo(
-    () => ({ items, hydrated, totalPackages, add, setPackages, remove, clear }),
-    [items, hydrated, totalPackages, add, setPackages, remove, clear]
+    () => ({ items, hydrated, totalBoxes, add, setBoxes, remove, clear }),
+    [items, hydrated, totalBoxes, add, setBoxes, remove, clear]
   );
 
   return <CartContext.Provider value={api}>{children}</CartContext.Provider>;
@@ -116,56 +155,45 @@ export function useCart(): CartApi {
   return ctx;
 }
 
-// ---------------- Divisa (tasa USD→COP del servidor) ----------------
-interface CurrencyApi {
-  rate: number; // 1 USD = rate COP
-  packageSize: number;
+// ---------------- Tasa USD→COP (del servidor vía /api/meta) ----------------
+interface RateApi {
+  rate: number;
   ready: boolean;
 }
 
-const CurrencyContext = createContext<CurrencyApi>({
-  rate: 4200, // fallback demo si /api/meta tarda
-  packageSize: 200,
-  ready: false,
-});
+const RateContext = createContext<RateApi>({ rate: 3800, ready: false });
 
-function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [meta, setMeta] = useState({ rate: 4200, packageSize: 200, ready: false });
+function RateProvider({ children }: { children: ReactNode }) {
+  const [rate, setRate] = useState(3800);
 
   useEffect(() => {
     let alive = true;
     fetch("/api/meta")
       .then((r) => r.json())
       .then((m) => {
-        if (alive && m && typeof m.exchangeRateCOP === "number") {
-          setMeta({
-            rate: m.exchangeRateCOP,
-            packageSize: m.packageSize ?? 200,
-            ready: true,
-          });
-        }
+        if (alive && m && typeof m.exchangeRateCOP === "number") setRate(m.exchangeRateCOP);
       })
       .catch(() => {
-        /* se mantiene el fallback demo */
+        /* se mantiene el valor inicial */
       });
     return () => {
       alive = false;
     };
   }, []);
 
-  const api = useMemo(() => meta, [meta]);
-  return <CurrencyContext.Provider value={api}>{children}</CurrencyContext.Provider>;
+  const api = useMemo(() => ({ rate, ready: rate > 0 }), [rate]);
+  return <RateContext.Provider value={api}>{children}</RateContext.Provider>;
 }
 
-export function useCurrency(): CurrencyApi {
-  return useContext(CurrencyContext);
+export function useRate(): RateApi {
+  return useContext(RateContext);
 }
 
 // ---------------- Ensamble ----------------
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <CartProvider>
-      <CurrencyProvider>{children}</CurrencyProvider>
-    </CartProvider>
+    <RateProvider>
+      <CartProvider>{children}</CartProvider>
+    </RateProvider>
   );
 }

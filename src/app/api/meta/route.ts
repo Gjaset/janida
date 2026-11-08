@@ -1,21 +1,18 @@
 // GET /api/meta — configuración pública usada por el frontend.
-// La tasa de cambio vive SOLO en el servidor (EXCHANGE_RATE_COP);
-// el cliente la recibe aquí, nunca la calcula.
+// La tasa de cambio vive en el servidor (settings del almacén o
+// la env EXCHANGE_RATE_COP como respaldo); el cliente la recibe
+// aquí, nunca la calcula ni la escribe a mano.
 import { NextResponse } from "next/server";
-import {
-  BRAND_NAME,
-  EXCHANGE_RATE_COP,
-  PACKAGE_SIZE,
-  PAYMENT_PROVIDER,
-} from "@/lib/config";
+import { EXCHANGE_RATE_COP } from "@/lib/config";
+import { getSettings } from "@/lib/store";
 
 export async function GET() {
+  const settings = await getSettings();
   return NextResponse.json({
-    brand: BRAND_NAME,
+    brand: "JANIDA SAS",
     currencyBase: "USD",
     secondaryCurrency: "COP",
-    exchangeRateCOP: EXCHANGE_RATE_COP,
-    packageSize: PACKAGE_SIZE,
-    paymentProvider: PAYMENT_PROVIDER,
+    exchangeRateCOP: settings.exchangeRateCOP ?? EXCHANGE_RATE_COP,
+    stemsPerBox: 200,
   });
 }

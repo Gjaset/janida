@@ -1,59 +1,51 @@
 import Link from "next/link";
+import { getLangCookie, t } from "@/lib/i18n";
 
-// Footer del sitio público. Datos de contacto demo (configurables
-// por variables de entorno NEXT_PUBLIC_*).
-const CONTACTO_DEMO = {
-  email: "ventas@janida.co",
-  phoneWholesale: "+57 320 555 0199",
-  phoneUS: "+1 (305) 555-0199",
-  address: "Savanna de Bogotá, Cundinamarca · Colombia",
-};
+// Footer — datos de contacto de Janida (marcadores de ejemplo
+// documentados en el README). Textos desde el diccionario i18n.
+export async function SiteFooter() {
+  const lang = await getLangCookie();
+  const year = new Date().getFullYear();
 
-export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="container inner">
         <div>
-          <div className="brandline">JANIDA SAS ✿</div>
+          <div className="brandline">{t(lang, "common.brand")} ✿</div>
           <p style={{ fontSize: "0.9rem", color: "#aebfb3", maxWidth: "38ch" }}>
-            Exportadora de claveles desde la Sabana de Bogotá hacia el
-            mercado mayorista de Estados Unidos. Frescura, trazabilidad y
-            cumplimiento en cada envío aéreo.
+            {t(lang, "footer.about")}
           </p>
         </div>
         <div>
-          <h4>Site</h4>
+          <h4>{t(lang, "footer.links_t")}</h4>
           <p style={{ lineHeight: 2, margin: 0, fontSize: "0.92rem" }}>
-            <Link href="/">Home</Link>
+            <Link href="/">{t(lang, "nav.home")}</Link>
             <br />
-            <Link href="/catalog">Catalog</Link>
+            <Link href="/catalog">{t(lang, "nav.catalog")}</Link>
             <br />
-            <Link href="/cart">Cart</Link>
+            <Link href="/track">{t(lang, "nav.track")}</Link>
             <br />
-            <Link href="/admin/login">Staff · Admin panel</Link>
+            <Link href="/cart">{t(lang, "nav.cart")}</Link>
+            <br />
+            <Link href="/admin/login">{t(lang, "footer.admin_link")}</Link>
           </p>
         </div>
         <div>
-          <h4>Contact (demo data)</h4>
+          <h4>{t(lang, "footer.contact_t")}</h4>
           <p style={{ lineHeight: 1.9, margin: 0, fontSize: "0.92rem" }}>
-            {CONTACTO_DEMO.address}
+            {t(lang, "footer.contact_addr")}
             <br />
-            {CONTACTO_DEMO.email}
+            {t(lang, "footer.contact_email")}
             <br />
-            {CONTACTO_DEMO.phoneWholesale} · Colombia
-            <br />
-            {CONTACTO_DEMO.phoneUS} · U.S. office
+            {t(lang, "footer.contact_phone_us")}
           </p>
         </div>
       </div>
       <div className="container legal">
         <span>
-          © {new Date().getFullYear()} JANIDA SAS · NIT
-          (demostración) 900.000.000-0
+          © {year} {t(lang, "common.brand")} · {t(lang, "footer.legal1")}
         </span>
-        <span>
-          Sitio demostrativo — datos de ejemplo y pagos simulados con MockPay.
-        </span>
+        <span>{t(lang, "footer.legal2")}</span>
       </div>
     </footer>
   );

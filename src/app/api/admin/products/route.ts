@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   let idFinal = "temp";
   await updateDb((db) => {
     const taken = new Set(db.products.map((p) => p.id));
-    idFinal = productSlugId(parsed.data.name, taken);
+    idFinal = productSlugId(parsed.data.variety, taken);
     const product: Product = { ...newProduct, id: idFinal };
     db.products.push(product);
   });

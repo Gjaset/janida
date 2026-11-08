@@ -1,194 +1,352 @@
 // ============================================================
 // Tipos de dominio compartidos (frontend + backend).
-// Estos tipos representan la "contrata" de datos que hoy vive
-// en el almacén mock (data/db.json) y que mañana podría vivir
-// en una base de datos real (PostgreSQL, MongoDB, etc.).
+// Hoy viven en el almacén JSON (data/db.json); mañana pueden
+// vivir en una base de datos real sin cambiar el resto del
+// código: las firmas de store.ts se mantienen.
+//
+// Regla de venta: TODO el sitio vende CAJAS ENTERAS selladas.
+// fields: stems_per_box, min_order_boxes, price_per_box (USD),
+// cost_per_box_cop, stock_boxes.
 // ============================================================
 
-/** Moneda base de almacenamiento (ver DECISIONES.md) */
-export type CurrencyCode = "USD" | "COP";
+export type Lang = "en" | "es";
 
 /** Tipo/variedad de clavel */
 export type CarnationType = "standard" | "spray";
 
-/**
- * Producto del catálogo.
- * IMPORTANTE: todas las ventas se realizan ÚNICAMENTE en paquetes de
- * `packageSize` tallos (por defecto 200). El campo `priceUSD` es el
- * precio POR PAQUETE, no por tallo.
- */
-export interface Product {
-  id: string;
-  name: string; // nombre comercial, ej: "Tempo Red"
-  variety: string; // variedad botánica/comercial, ej: "Dianthus caryophyllus · Tempo"
-  type: CarnationType; // "standard" (clavel de flor grande) | "spray" (mini clavel)
-  colorFamily: string; // familia de color para filtros: Rojo, Blanco, Rosa...
-  presentation: string; // presentación: "Paquete de 200 tallos"
-  packageSize: number; // tallos por paquete (siempre 200 en este catálogo)
-  priceUSD: number; // precio por paquete (USD 17–20 según variedad)
-  packagesAvailable: number; // disponibilidad EN PAQUETES
-  grade: string; // grado/calidad de tallo, ej: "Extra 55 cm"
-  description: string;
-  /** Galería de URLs externas; el admin las pega manualmente desde el panel */
-  galleryUrls: string[];
-  active: boolean; // visible/invisible en el catálogo público
-  createdAt: string; // ISO
-  updatedAt: string; // ISO
-}
+/** Familias de color (clave canónica para filtros).
+ *  Alineadas con las fotos reales del catálogo (public/carnations):
+ *  blanco, rosado, salmón, picotee, fucsia (incluye vino/borgoña)
+ *  y surtido (ramos mezclados de mini clavel). */
+export const COLOR_FAMILIES = [
+  "white",
+  "pink",
+  "salmon",
+  "picotee",
+  "fuchsia",
+  "mix",
+] as const;
 
-/** Marca del método de pago simulado */
-export type CardBrand = "Visa" | "Mastercard" | "American Express";
+/** Condiciones de pago B2B (sin datos de tarjeta: facturaelectrónica) */
+export type PaymentTerms = "prepaid" | "net30" | "net60" | "net90";
 
-/** Estado de un pedido (flujo gestionado desde el panel admin) */
-export type OrderStatus =
-  | "pendiente" // recién pagado (simulado), esperando confirmación
-  | "confirmado" // confirmado por el equipo JANIDA
-  | "en_transito" // en la logística aérea hacia EE. UU.
-  | "entregado" // recibido por el comprador
-  | "cancelado"; // cancelado (desde estados permitidos)
-
-export const ORDER_STATUS_ORDER: OrderStatus[] = [
-  "pendiente",
-  "confirmado",
-  "en_transito",
-  "entregado",
-];
-
-/**
- * Transiciones permitidas del flujo de estados:
- *   pendiente   → confirmada | cancelada
- *   confirmado  → en_transito | cancelado
- *   en_transito → entregado
- */
-export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pendiente: ["confirmado", "cancelado"],
-  confirmado: ["en_transito", "cancelado"],
-  en_transito: ["entregado"],
-  entregado: [],
-  cancelado: [],
+export const PAYMENT_TERMS_DAYS: Record<PaymentTerms, number> = {
+  prepaid: 0,
+  net30: 30,
+  net60: 60,
+  net90: 90,
 };
 
-export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
-  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
+export const PAYMENT_TERMS_LIST: PaymentTerms[] = [
+  "prepaid",
+  "net30",
+  "net60",
+  "net90",
+];
+
+export function isPaymentTerms(v: string): v is PaymentTerms {
+  return (PAYMENT_TERMS_LIST as string[]).includes(v);
 }
 
-/** Línea de pedido: SIEMPRE en número de paquetes (enteros) */
+/** Estado de pago de la factura */
+export type InvoiceStatus = "pending" | "paid";
+
+/** Estado PÚBLICO del pago en seguimiento */
+export function invoiceState(o: {
+  paymentStatus: InvoiceStatus;
+  dueDate: string;
+  paymentTerms: PaymentTerms;
+  awb?: string;
+}): "pending" | "paid" | "overdue" {
+  if (o.paymentStatus === "paid") return "paid";
+  if (o.dueDate && new Date(o.dueDate) < new Date(todayISO())) return "overdue";
+  return "pending";
+}
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ------------------------------------------------------------
+// TRACKING: la escalera de estados del pedido, en orden.
+// ------------------------------------------------------------
+
+export type OrderStatus =
+  | "order_received" //  1. Pedido recibido
+  | "payment_confirmed" // 2. Pago confirmado
+  | "pickup_scheduled" //  3. Recogida en finca programada
+  | "picked_up_farm" //    4. Recogido en finca aliada
+  | "post_harvest_review" //5. Revisión y conteo en poscosecha
+  | "export_docs_ready" // 6. Documentos de exportación listos (ICA y DIAN)
+  | "delivered_airline" // 7. Entregado a la aerolínea
+  | "in_transit" //        8. En tránsito
+  | "arrival_us" //        9. Llegada a EE. UU. (aduana e inspección)
+  | "delivered" //        10. Entregado
+  | "cancelled";
+
+/** Escalera de avance (sin el estado terminal cancelado) */
+export const TRACKING_STATUSES: Exclude<OrderStatus, "cancelled">[] = [
+  "order_received",
+  "payment_confirmed",
+  "pickup_scheduled",
+  "picked_up_farm",
+  "post_harvest_review",
+  "export_docs_ready",
+  "delivered_airline",
+  "in_transit",
+  "arrival_us",
+  "delivered",
+];
+
+export function statusIndex(s: OrderStatus): number {
+  return TRACKING_STATUSES.indexOf(s as Exclude<OrderStatus, "cancelled">);
+}
+
+/** El pedido se puede cancelar antes de entregarlo a la aerolínea */
+export function canCancel(s: OrderStatus): boolean {
+  const i = statusIndex(s);
+  return i >= 0 && i < statusIndex("delivered_airline");
+}
+
+/** Siguiente estado en la escalera (null si está al final o cancelado) */
+export function nextStatus(s: OrderStatus): OrderStatus | null {
+  const i = statusIndex(s);
+  if (i < 0 || i >= TRACKING_STATUSES.length - 1) return null;
+  return TRACKING_STATUSES[i + 1];
+}
+
+/** Tipos de incidencia que mueven la fecha estimada de entrega */
+export type IncidentKind = "delay" | "customs_hold";
+export const INCIDENT_KINDS: IncidentKind[] = ["delay", "customs_hold"];
+
+// ------------------------------------------------------------
+// Productos
+// ------------------------------------------------------------
+
+export interface Product {
+  id: string;
+  variety: string; // nombre comercial de la variedad, ej. "Candela"
+  name_en: string;
+  name_es: string;
+  desc_en: string;
+  desc_es: string;
+  type: CarnationType;
+  colorFamily: string; // clave canónica: red, pink, white…
+  stemsPerBox: number; // 200 (regla del negocio)
+  minOrderBoxes: number; // pedido mínimo en cajas, ej. 5
+  pricePerBoxUSD: number; // USD por caja (26–28 clavel; otros por confirmar)
+  costPerBoxCOP: number; // costo de compra de la caja en COP (margen)
+  stockBoxes: number; // disponibilidad en CAJAS
+  grade: string; // ej. "Extra 55 cm"
+  galleryUrls: string[]; // URLs pegadas por el admin
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ------------------------------------------------------------
+// Clientes (compradores registrados; el checkout acepta clientes
+// nuevos también: se registran al emitir el pedido)
+// ------------------------------------------------------------
+
+export interface Customer {
+  id: string;
+  company: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  country: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  addressLine1: string;
+  paymentTerms: PaymentTerms;
+  tier: "large" | "small"; // grandes = crédito 60/90; pequeños = prepago
+  createdAt: string;
+}
+
+// ------------------------------------------------------------
+// Pedidos
+// ------------------------------------------------------------
+
+/** Línea de pedido: SIEMPRE en cajas enteras */
 export interface OrderItem {
+  id: string;
+  orderId: string;
   productId: string;
-  productName: string;
-  variety: string;
+  name_en: string;
+  name_es: string;
   colorFamily: string;
-  presentation: string;
-  packageSize: number;
-  packages: number; // entero ≥ 1 — unidades mínimas de venta
-  unitPriceUSD: number; // precio por paquete
-  subtotalUSD: number; // packages * unitPriceUSD
+  stemsPerBox: number;
+  boxes: number; // entero ≥ minOrderBoxes
+  stems: number; // boxes × stemsPerBox (calculado en servidor)
+  pricePerBoxUSD: number;
+  subtotalUSD: number; // boxes × pricePerBoxUSD (calculado en servidor)
+  costPerBoxCOP: number; // snapshot del costo (margen en dashboard)
 }
 
-/** Datos del comprador mayorista (EE. UU.) */
+/** Datos del comprador en el pedido (snapshot del cliente o del checkout) */
 export interface BuyerInfo {
   fullName: string;
   company: string;
-  country: string; // default "Estados Unidos"
+  country: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
-  state: string; // estado/provincia
-  postalCode: string; // ZIP si es EE. UU.
+  state: string;
+  postalCode: string;
   email: string;
   phone: string;
-  notes?: string; // notas de pedido (opcional)
+  notes?: string;
 }
 
-/** Registro de cambio de estado (trazabilidad del pedido) */
-export interface OrderEvent {
-  status: OrderStatus | "pago_aprobado";
+/** Evento del seguimiento (timeline vertical público) */
+export interface TrackingEvent {
+  id: string;
+  orderId: string;
+  type: "status" | "incident";
+  status?: OrderStatus; // si type = "status"
+  incidentKind?: IncidentKind; // si type = "incident"
   at: string; // ISO
+  /** Código de ubicación traducido vía i18n (loc.*) */
+  location:
+    | "bogota"
+    | "postharvest"
+    | "allied_farm"
+    | "bog_airport"
+    | "us_airport"
+    | "customs"
+    | "transit"
+    | "delivered_receiver";
   note?: string;
+  recordedBy: string; // quién registró el evento
+  /** Días que la incidencia movió la fecha estimada (si aplica) */
+  etaShiftDays?: number;
 }
+
+export type InvoiceState = "pending" | "paid" | "overdue";
 
 export interface Order {
-  id: string; // ORD-2026-0001
+  id: string; // ORD-2026-0001 (número de pedido visible)
   buyer: BuyerInfo;
-  items: OrderItem[];
-  subtotalUSD: number;
-  shippingUSD: 0;
-  totalUSD: number;
-  /** COP registrado al momento del pago (tasa del día del pedido) */
-  totalCOP: number;
-  exchangeRate: number; // tasa usada para totalCOP
+  customerId?: string; // si corresponde a un cliente conocido
+  totalUSD: number; // calculado en servidor (nunca confiar en cliente)
+  paymentTerms: PaymentTerms;
+  invoiceNumber: string; // FAC-2026-0141
+  invoiceDate: string; // ISO fecha (día de emisión)
+  dueDate: string; // ISO fecha de vencimiento según condiciones
+  paymentStatus: InvoiceStatus; // pending | paid
+  paidAt?: string; // ISO fecha de pago confirmado
+  awb: string; // guía aérea generada al crear el pedido
+  estimatedDelivery: string; // ISO +4 días desde pago confirmado (o incidencias)
   status: OrderStatus;
-  history: OrderEvent[];
-  paymentRef: string; // referencia del pago SIMULADO
-  paymentBrand: string; // "MockPay Visa ···· 4242"
   createdAt: string;
   updatedAt: string;
 }
 
-/** Intento/estado de pago SIMULADO (tipo PaymentIntent de Stripe) */
-export type PaymentIntentStatus = "requires_payment" | "succeeded" | "failed" | "expired";
+// ------------------------------------------------------------
+// Mensajes de contacto y configuración
+// ------------------------------------------------------------
 
-export interface PaymentIntent {
-  pid: string; // pi_demo_xxxxx
-  status: PaymentIntentStatus;
-  amountUSD: number;
-  exchangeRate: number;
-  totalCOP: number;
-  items: OrderItem[]; // snapshot de carrito al crear el intent
-  buyer: BuyerInfo; // snapshot de datos del comprador
-  failureReason?: string; // "card_declined" | "insufficient_funds" | "expired_card" | "invalid"
-  createdAt: string;
-  updatedAt: string;
-  orderId?: string; // id del pedido si el pago fue exitoso
-}
-
-/** Mensaje del formulario de contacto (demo) */
 export interface ContactMessage {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   message: string;
   createdAt: string;
 }
 
-// ============================================================
-// Métricas del dashboard (calculadas en el servidor)
-// ============================================================
+export interface Settings {
+  /** Tasa usada para mostrar equivalencias COP */
+  exchangeRateCOP: number;
+  /** Costo inicial de referencia del clavel para el simulador */
+  referenceCostBoxCOP: number;
+  /** Umbral (cajas) para alerta de inventario bajo */
+  lowStockThresholdBoxes: number;
+}
+
+// ------------------------------------------------------------
+// Dashboard
+// ------------------------------------------------------------
+
+export interface DashboardQuery {
+  /** "30d" | "90d" | "12m" */
+  period: string;
+}
+
+export type DashboardPeriod = "30d" | "90d" | "12m";
+export const DASHBOARD_PERIODS: DashboardPeriod[] = ["30d", "90d", "12m"];
+
 export interface MonthBucket {
-  month: string; // "2026-06"
+  key: string; // "2026-06"
   label: string; // "jun 2026"
-  orders: number;
   salesUSD: number;
-  salesCOP: number;
 }
 
-export interface TopProduct {
-  productId: string;
-  name: string;
-  packagesSold: number;
-  revenueUSD: number;
+export interface CustomerBucket {
+  customerId: string;
+  company: string;
+  salesUSD: number;
+  sharePct: number;
 }
 
-export interface LowStockItem {
-  productId: string;
-  name: string;
-  packagesAvailable: number;
-  threshold: number;
+export interface AgingBucket {
+  label: string; // "0–30", "31–60"…
+  salesUSD: number;
+  count: number;
+}
+
+export interface StatusBucket {
+  status: OrderStatus;
+  count: number;
+}
+
+export interface OverdueInvoice {
+  orderId: string;
+  orderNumber: string;
+  customer: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  totalUSD: number;
+  daysOverdue: number;
+}
+
+export interface ProblemOrder {
+  orderId: string;
+  orderNumber: string;
+  customer: string;
+  status: OrderStatus;
+  issue: "incident" | "late_delivery";
+  detail: string;
 }
 
 export interface DashboardMetrics {
   generatedAt: string;
+  period: DashboardPeriod;
+  fromISO: string;
   totals: {
     salesUSD: number;
-    salesCOP: number;
+    boxesSold: number;
+    stemsSold: number;
     ordersCount: number;
-    packagesSold: number;
     avgOrderUSD: number;
-    pendingCount: number; // pedidos pendientes por confirmar
+    avgPricePerStemUSD: number;
+    marginPerBoxCOP: number;
+    marginTotalCOP: number;
+    marginPct: number;
+    receivableUSD: number;
+    avgCollectionDays: number;
+    onTimePct: number;
+    incidentPct: number;
   };
-  byMonth: MonthBucket[]; // últimos 6 meses (incluye meses sin ventas)
-  topProducts: TopProduct[]; // más vendidos, por paquetes
-  lowStock: LowStockItem[]; // productos con bajo inventario (paquetes)
-  byStatus: Record<OrderStatus, number>;
-  activeProducts: number;
+  byMonth: MonthBucket[];
+  byCustomer: CustomerBucket[];
+  top3SharePct: number; // alerta si > 70
+  receivablesByAging: AgingBucket[];
+  byStatus: StatusBucket[];
+  onTimeVsLate: { onTime: number; late: number };
+  overdueInvoices: OverdueInvoice[];
+  problemOrders: ProblemOrder[];
 }

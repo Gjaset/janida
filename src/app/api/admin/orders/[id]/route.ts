@@ -1,29 +1,14 @@
-// GET/PATCH /api/admin/orders/[id]
-// PATCH aplica el flujo de estados:
-//   pendiente → confirmado | cancelado
-//   confirmado → en_transito | cancelado
-//   en_transito → entregado
-// (cancelar solo desde pendiente o confirmado; ver docs).
+// POST /api/admin/orders/[id] — acciones del panel sobre un pedido:
+//   { action: "advance" }    avanza al siguiente estado de la escalera
+//   { action: "mark_paid" }  confirma el pago / factura pagada
+//   { action: "cancel" }     cancela (solo antes de entregar a aerolínea)
+// Todas registran eventos en el tracking.
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-api";
-import { statusSchema } from "@/lib/validation";
-import { applyStatusTransition, getOrder } from "@/lib/orders";
+import { advanceSchema } from "@/lib/validation";
+import { advanceOrder, cancelOrder, markOrderPaid } from "@/lib/orders";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const guard = await requireAdmin();
-  if (guard) return guard;
-  const { id } = await params;
-  const order = await getOrder(id);
-  if (!order) {
-    return NextResponse.json({ error: "Pedido no encontrado." }, { status: 404 });
-  }
-  return NextResponse.json({ order });
-}
-
-export async function PATCH(
+export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -37,16 +22,22 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
-  const parsed = statusSchema.safeParse(body);
+  const parsed = advanceSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Estado inválido.", issues: parsed.error.flatten() },
-      { status: 422 }
-    );
+    return NextResponse.json({ error: "Acción inválida" }, { status: 422 });
   }
-  const result = await applyStatusTransition(id, parsed.data.status, parsed.data.note);
+
+  const by = "Equipo Janida";
+  const { action, note } = parsed.data;
+  const result =
+    action === "advance"
+      ? await advanceOrder(id, by, note)
+      : action === "mark_paid"
+        ? await markOrderPaid(id, by, note)
+        : await cancelOrder(id, by, note);
+
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }
-  return NextResponse.json({ ok: true, order: result.order });
+  return NextResponse.json({ ok: true, orderId: id, message: result.message });
 }

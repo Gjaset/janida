@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppProviders } from "./providers";
+import { getLangCookie } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s · JANIDA SAS",
   },
   description:
-    "Exportadora colombiana de claveles hacia Estados Unidos. Catálogo mayorista en paquetes de 200 tallos, pedidos con pago simulado y seguimiento de envíos.",
+    "Colombian carnation exporter to the U.S. wholesale market. 200-stem sealed boxes, B2B orders with invoices and full shipment tracking.",
 };
 
 export const viewport: Viewport = {
@@ -17,11 +18,12 @@ export const viewport: Viewport = {
   themeColor: "#2e4b3a",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const lang = await getLangCookie();
   return (
-    <html lang="es">
+    <html lang={lang}>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

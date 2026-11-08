@@ -1,145 +1,136 @@
-"use client";
-// ============================================================
-// CONFIRMACIÓN PÚBLICA DEL PEDIDO (tras el pago simulado).
-// ============================================================
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import type { OrderStatus } from "@/lib/types";
+import { notFound } from "next/navigation";
+import { getLangCookie, t } from "@/lib/i18n";
+import { getOrder, itemsOfOrder } from "@/lib/store";
+import { format_money } from "@/lib/money";
+import { nextStatus } from "@/lib/types";
 
-interface OrderSummary {
-  id: string;
-  status: OrderStatus;
-  totalUSD: number;
-  totalCOP: number;
-  exchangeRate: number;
-  items: Array<{
-    productName: string;
-    variety: string;
-    packages: number;
-    packageSize: number;
-    unitPriceUSD: number;
-    subtotalUSD: number;
-  }>;
-  buyer: { fullName: string; company: string; city: string; state: string; country: string };
-  paymentRef: string;
-  paymentBrand: string;
-  createdAt: string;
-}
+// Página de confirmación tras emitir el pedido: número de pedido,
+// factura emitida con vencimiento según condiciones, resumen en
+// cajas y tallos, y próximo estado del tracking.
+export default async function OrderConfirmPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const lang = await getLangCookie();
+  const order = await getOrder(decodeURIComponent(id));
+  if (!order) notFound();
+  const items = await itemsOfOrder(order.id);
 
-export default function OrderConfirmPage() {
-  const { id } = useParams<{ id: string }>();
-  const [order, setOrder] = useState<OrderSummary | null>(null);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/orders/${id}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => setOrder(d))
-      .catch(() => setNotFound(true));
-  }, [id]);
-
-  if (notFound) {
-    return (
-      <div className="container page-pad">
-        <div className="empty-state">
-          <div className="big">🔍</div>
-          <h2>Order not found</h2>
-          <p>The order {id} does not exist in this demo store.</p>
-          <Link href="/catalog" className="btn btn-primary">Back to catalog</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!order) {
-    return <div className="container page-pad"><p>Loading order…</p></div>;
-  }
+  const termsLabel = t(lang, `confirm.terms_${order.paymentTerms}`);
+  const moderateStems = items.reduce((a, i) => a + i.stems, 0);
+  const totalBoxes = items.reduce((a, i) => a + i.boxes, 0);
+  const next = nextStatus(order.status);
 
   return (
     <div className="container page-pad order-confirm">
       <div className="ok-banner">
-        <span className="icon">✅</span>
+        <div className="icon">✿</div>
         <div>
-          <strong>Payment approved (simulated)</strong> — order {order.id} was
-          created. Your blooms are being scheduled for harvest and cold-chain
-          export. Our team will move the order through{" "}
-          <em>confirmed → in transit → delivered</em>.
+          <b>{t(lang, "confirm.thanks")}</b>
+          <p style={{ margin: "4px 0 0" }}>{t(lang, "confirm.lead")}</p>
         </div>
       </div>
 
-      <h1>Thank you, {order.buyer.fullName.split(" ")[0]}!</h1>
-      <p style={{ color: "var(--ink-soft)", marginBottom: 26 }}>
-        Reservation {order.paymentRef} · paid with {order.paymentBrand} (MockPay simulation).
-        We sent a confirmation to your email (in the real integration).
-      </p>
-
-      <div className="checkout-layout">
-        <div className="panel">
-          <h3>Order {order.id}</h3>
-          <table className="data-table" style={{ boxShadow: "none" }}>
-            <thead>
-              <tr>
-                <th>Variety</th>
-                <th>Packages</th>
-                <th>Stems</th>
-                <th style={{ textAlign: "right" }}>Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((it) => (
-                <tr key={it.productName}>
-                  <td className="strong">
-                    {it.productName}
-                    <div style={{ fontSize: "0.75rem", color: "var(--ink-faint)" }}>{it.variety}</div>
-                  </td>
-                  <td>{it.packages}</td>
-                  <td>{it.packages * it.packageSize}</td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    ${it.subtotalUSD.toFixed(2)} USD
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: 18 }}>
-            <span className="status-chip" data-status={order.status}>
-              ● {order.status.replace("_", " ")}
-            </span>
+      <div className="dash-card" style={{ marginBottom: 22 }}>
+        <div className="grid-cards" style={{ gap: 24 }}>
+          <div>
+            <div style={{ fontSize: "0.76rem", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--ink-faint)", fontWeight: 700 }}>
+              {t(lang, "confirm.order")}
+            </div>
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.7rem", color: "var(--brand-strong)" }}>
+              {order.id}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: "0.76rem", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--ink-faint)", fontWeight: 700 }}>
+              {t(lang, "confirm.invoice")}
+            </div>
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.4rem", color: "var(--brand-strong)" }}>
+              {order.invoiceNumber}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: "0.76rem", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--ink-faint)", fontWeight: 700 }}>
+              {t(lang, "confirm.terms")}
+            </div>
+            <div style={{ fontSize: "1.1rem", color: "var(--ink)" }}>
+              {termsLabel}
+              <br />
+              <small style={{ color: "var(--ink-faint)" }}>
+                {t(lang, "confirm.due_date")}: {order.dueDate}
+              </small>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: "0.76rem", textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--ink-faint)", fontWeight: 700 }}>
+              {t(lang, "track.est_t")}
+            </div>
+            <div style={{ fontSize: "1.1rem", color: "var(--ink)" }}>
+              {order.estimatedDelivery.slice(0, 10)}
+              <br />
+              <small style={{ color: "var(--ink-faint)" }}>AWB {order.awb}</small>
+            </div>
           </div>
         </div>
+      </div>
 
-        <aside className="summary-card">
-          <h3>Summary</h3>
-          <div className="summary-row">
-            <span>Ship to</span>
-            <strong style={{ textAlign: "right" }}>
-              {order.buyer.company} · {order.buyer.city}, {order.buyer.state}, {order.buyer.country}
-            </strong>
-          </div>
-          <div className="summary-row">
-            <span>Ordered at</span>
-            <span>{new Date(order.createdAt).toLocaleString()}</span>
-          </div>
-          <div className="summary-row total">
-            <span>Total</span>
-            <span>
-              ${order.totalUSD.toFixed(2)} USD
-              <div style={{ fontSize: "0.75rem", color: "var(--ink-faint)", fontWeight: 500 }}>
-                ≈ {new Intl.NumberFormat("es-CO").format(order.totalCOP)} COP
-              </div>
-            </span>
-          </div>
-          <div className="note">
-            Pago SIMULADO (documento de demostración). Este flujo deja lista la
-            integración con Stripe real; los estados del pedido se gestionan
-            desde el panel admin de JANIDA.
-          </div>
-          <Link href="/catalog" className="btn btn-primary" style={{ width: "100%", marginTop: 14 }}>
-            Keep browsing the catalog
+      <div className="dash-card">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>{t(lang, "cart.col_product")}</th>
+              <th>{t(lang, "cart.col_qty")}</th>
+              <th>{t(lang, "confirm.stems_col")}</th>
+              <th>{t(lang, "detail.how_sold_price_box")}</th>
+              <th>{t(lang, "cart.col_total")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((i) => (
+              <tr key={i.id}>
+                <td className="strong">{lang === "es" ? i.name_es : i.name_en}</td>
+                <td>{i.boxes}</td>
+                <td>{i.stems}</td>
+                <td>{format_money(i.pricePerBoxUSD)}</td>
+                <td>{format_money(i.subtotalUSD)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <span style={{ color: "var(--ink-soft)" }}>
+            {t(lang, "unit.box_n", { n: totalBoxes })} · {t(lang, "unit.stems", { n: moderateStems })}
+          </span>
+          <b style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem", color: "var(--brand-strong)" }}>
+            {format_money(order.totalUSD)}
+          </b>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 22 }}>
+        <h3>{t(lang, "confirm.next_t")}</h3>
+        <ol style={{ color: "var(--ink-soft)", margin: 0, paddingLeft: 20 }}>
+          <li>{t(lang, "confirm.next_1")}</li>
+          <li>{t(lang, "confirm.next_2")}</li>
+          <li>{t(lang, "confirm.next_3")}</li>
+        </ol>
+        <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>
+          {t(lang, "confirm.tip")}
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link href={`/track?order=${order.id}`} className="btn btn-accent">
+            {t(lang, "confirm.track_cta")} →
           </Link>
-        </aside>
+          {next && (
+            <span className="status-chip" style={{ alignSelf: "center" }}>
+              {t(lang, "track.state")}: {t(lang, `status.${order.status}`)} →{" "}
+              {t(lang, `status.${next}`)}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

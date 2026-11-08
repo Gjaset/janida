@@ -7,9 +7,15 @@
     "dev": "next dev -p 3100",
     "build": "next build",
     "start": "next start -p 3100",
+    "seed": "node ./scripts/seed.js",
+    "i18n:build": "python3 scripts/i18n.py",
     "demo:reset": "node ./scripts/reset-demo-data.mjs",
     "demo:images": "node ./scripts/make-svg-images.mjs",
     "hash:password": "node ./scripts/hash-password.mjs"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "next": "15.5.6",

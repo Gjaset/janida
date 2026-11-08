@@ -1,17 +1,25 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCart } from "./providers";
+import { useCart, useLang, useRate } from "./providers";
+import { format_money, usd_to_cop } from "@/lib/money";
+import type { Lang } from "@/lib/i18n";
 
+// Site header — nav + cart + language toggle. All visible text
+// comes from the injected dictionary (scripts/i18n.py); the
+// toggle hits /api/lang/[to] which sets the cookie server-side,
+// so the WHOLE site re-renders in the other language.
 export function SiteHeader() {
-  const { totalPackages, hydrated } = useCart();
+  const { totalBoxes, hydrated } = useCart();
+  const { t, lang } = useLang();
   const pathname = usePathname();
 
+  const target: Lang = lang === "en" ? "es" : "en";
   const navItems = [
-    { href: "/", label: "Home" },
-    { href: "/catalog", label: "Catalog" },
-    { href: "/#about", label: "About us" },
-    { href: "/#contact", label: "Contact" },
+    { href: "/", label: t("nav.home") },
+    { href: "/catalog", label: t("nav.catalog") },
+    { href: "/track", label: t("nav.track") },
+    { href: "/#contact", label: t("nav.contact") },
   ];
 
   return (
@@ -20,8 +28,8 @@ export function SiteHeader() {
         <Link href="/" className="logo">
           <span className="flower">✿</span>
           <span>
-            JANIDA SAS
-            <small>Colombian Carnations · Wholesale Export</small>
+            {t("common.brand")}
+            <small>{t("common.tagline")}</small>
           </span>
         </Link>
         <nav className="main-nav">
@@ -35,11 +43,19 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link href="/cart" className="cart-link">
-            <span>🛒 Cart</span>
+            <span>🛒 {t("nav.cart")}</span>
             <span className="count" suppressHydrationWarning>
-              {hydrated ? totalPackages : "·"}
+              {hydrated ? totalBoxes : "·"}
             </span>
           </Link>
+          <a
+            href={`/api/lang/${target}?next=${encodeURIComponent(pathname + "")}`}
+            className="lang-toggle"
+            aria-label={t("common.lang.aria")}
+            hrefLang={target}
+          >
+            {t("common.lang.toggle_target")}
+          </a>
         </nav>
       </div>
     </header>

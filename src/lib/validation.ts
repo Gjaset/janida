@@ -1,43 +1,40 @@
 // ============================================================
-// Esquemas de validación (servidor) con zod.
-// Se usan en las rutas API para rechazar payloads inválidos;
-// el frontend también valida en el cliente con los mismos
-// criterios y muestra errores amigables.
+// Esquemas de validación (servidor) con Zod.
+// Las rutas API rechazan payloads inválidos con estos esquemas.
 // ============================================================
 import { z } from "zod";
 
-// ---------------- Comprador (checkout) ----------------
+// ---------------- Comprador (checkout B2B) ----------------
+// NOTA: NO se piden datos de tarjeta — el pago B2B se hace con
+// factura comercial (prepago o crédito a 30/60/90 días).
 export const buyerSchema = z.object({
-  fullName: z.string().trim().min(3, "Nombre demasiado corto").max(120),
+  fullName: z.string().trim().min(3).max(120),
   company: z.string().trim().min(2, "Indica la empresa").max(140),
   country: z.string().trim().min(2).max(80),
-  addressLine1: z.string().trim().min(5, "Dirección demasiado corta").max(160),
+  addressLine1: z.string().trim().min(5).max(160),
   addressLine2: z.string().trim().max(160).optional().or(z.literal("")),
-  city: z.string().trim().min(2, "Ciudad requerida").max(80),
-  state: z.string().trim().min(2, "Estado/provincia requerido").max(80),
-  postalCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z0-9\- ]{3,10}$/, "Código postal inválido"),
-  email: z.string().trim().email("Correo inválido"),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^[+\d()\-.\s]{7,20}$/, "Teléfono inválido"),
+  city: z.string().trim().min(2).max(80),
+  state: z.string().trim().min(2).max(80),
+  postalCode: z.string().trim().regex(/^[A-Za-z0-9\- ]{3,10}$/),
+  email: z.string().trim().email(),
+  phone: z.string().trim().regex(/^[+\d()\-.\s]{7,20}$/),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 export type BuyerInput = z.infer<typeof buyerSchema>;
 
-// ---------------- Carrito (ítems en PAQUETES) ----------------
+// ---------------- Carrito (ítems en CAJAS enteras) ----------------
 export const cartItemSchema = z.object({
   productId: z.string().trim().min(1),
-  // Número de PAQUETES (entero ≥ 1). La venta es únicamente por
-  // paquetes cerrados de 200 tallos.
-  packages: z.number().int("Cantidad debe ser entera (paquetes)").min(1),
+  // Cajas enteras. El pedido mínimo por producto se valida en el
+  // servidor contra el producto (min_order_boxes).
+  boxes: z.number().int("Cantidad en cajas enteras").min(1),
 });
+export type CartItemInput = z.infer<typeof cartItemSchema>;
+
 export const checkoutSchema = z.object({
   buyer: buyerSchema,
-  items: z.array(cartItemSchema).min(1, "Carrito vacío"), // nota: min(1)
+  paymentTerms: z.enum(["prepaid", "net30", "net60", "net90"]),
+  items: z.array(cartItemSchema).min(1, "Carrito vacío"),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
@@ -45,69 +42,35 @@ export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export const contactSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email(),
+  phone: z.string().trim().max(20).optional().or(z.literal("")),
   message: z.string().trim().min(10).max(2000),
 });
 
-// ---------------- Pago simulado (tarjeta mock) ----------------
-// NO se valida contra bandejas de tarjetas reales ni hay Luhn:
-// el pasarela mock solo acepta los "números de prueba" documentados.
-export const cardSchema = z.object({
-  cardNumber: z
-    .string()
-    .trim()
-    .regex(/^\d{15,16}$/, "Número de tarjeta inválido (use los números de prueba)"),
-  cvc: z
-    .string()
-    .trim()
-    .regex(/^\d{3,4}$/, "CVC inválido"),
-  expMonth: z
-    .string()
-    .trim()
-    .regex(/^(0[1-9]|1[0-2])$/, "Mes (MM) inválido"),
-  expYear: z
-    .string()
-    .trim()
-    .regex(/^\d{4}$/, "Año (AAAA) inválido"),
-  name: z.string().trim().min(3).max(120),
-  zip: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z0-9\- ]{3,10}$/, "Código postal inválido"),
-});
-export type CardInput = z.infer<typeof cardSchema>;
-
 // ---------------- Producto (admin) ----------------
 export const productAdminSchema = z.object({
-  name: z.string().trim().min(2).max(120),
   variety: z.string().trim().min(1).max(80),
+  name_en: z.string().trim().min(2).max(120),
+  name_es: z.string().trim().min(2).max(120),
+  desc_en: z.string().trim().min(10).max(2000),
+  desc_es: z.string().trim().min(10).max(2000),
   type: z.enum(["standard", "spray"]),
   colorFamily: z.string().trim().min(2).max(40),
-  presentation: z.string().trim().min(3).max(120),
-  packageSize: z
-    .number()
-    .int()
-    .gt(0)
-    .default(200),
-  priceUSD: z
-    .number()
-    .min(1, "Precio demasiado bajo")
-    .max(1000, "Precio demasiado alto"),
-  packagesAvailable: z
-    .number()
-    .int("Disponibilidad en paquetes (entero)")
-    .min(0),
+  stemsPerBox: z.number().int().min(1).max(999).default(200),
+  minOrderBoxes: z.number().int().min(1).max(1000).default(5),
+  pricePerBoxUSD: z.number().min(0.5).max(1000),
+  costPerBoxCOP: z.number().int().min(0),
+  stockBoxes: z.number().int().min(0),
   grade: z.string().trim().min(1).max(60),
-  description: z.string().trim().min(10).max(2000),
   galleryUrls: z
     .array(
       z
         .string()
         .trim()
-        .min(1, "URL de imagen no puede estar vacía")
+        .min(1, "La URL no puede estar vacía")
         .max(500)
         .refine(
           (u) => /^https?:\/\/.+/i.test(u) || u.startsWith("/"),
-          "URL de imagen inválida (http(s)://… o ruta absoluta /…)"
+          "URL inválida (http(s)://… o ruta absoluta /…)"
         )
     )
     .min(1, "Agrega al menos una URL de imagen")
@@ -116,14 +79,23 @@ export const productAdminSchema = z.object({
 });
 export type ProductAdminInput = z.infer<typeof productAdminSchema>;
 
-// ---------------- Cambio de estado de pedido ----------------
-export const statusSchema = z.object({
-  status: z.enum([
-    "pendiente",
-    "confirmado",
-    "en_transito",
-    "entregado",
-    "cancelado",
-  ]),
+// ---------------- Tracking / admin ----------------
+export const createOrderStatus = z
+  .string()
+  .trim()
+  .regex(/^ORD-\d{4}-\d{4}$/);
+
+export const trackSchema = z.object({
+  orderNumber: z.string().trim().min(4).max(40),
+  email: z.string().trim().email(),
+});
+
+export const advanceSchema = z.object({
+  action: z.enum(["advance", "mark_paid", "cancel"]),
+  note: z.string().trim().max(300).optional(),
+});
+
+export const incidentSchema = z.object({
+  kind: z.enum(["delay", "customs_hold"]),
   note: z.string().trim().max(300).optional(),
 });
