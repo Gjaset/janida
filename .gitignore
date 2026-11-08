@@ -24,3 +24,6 @@ npm-debug.log*
 *.log
 # Editor local
 .vscode/
+
+# Config del CLI de Vercel
+.vercel/
