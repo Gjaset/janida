@@ -731,7 +731,7 @@ const seed = {
   },
   counters: { orderSeq: maxOrderSeq, invoiceSeq: maxInvoiceSeq },
   settings: {
-    exchangeRateCOP: 3800,
+    exchangeRateCOP: 3323.18,
     referenceCostBoxCOP: 75000,
     lowStockThresholdBoxes: 20,
   },

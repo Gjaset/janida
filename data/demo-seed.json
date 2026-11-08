@@ -1,7 +1,7 @@
 {
   "meta": {
     "seed_version": 2,
-    "generated_at": "2026-11-08T04:06:06.346Z",
+    "generated_at": "2026-11-08T04:26:17.143Z",
     "generator": "scripts/seed.js",
     "note": "Datos de ejemplo para el sitio. El clavel estándar (US$26–28 por caja de 200 tallos) es dato de Janida; los demás precios y costos son de ejemplo: por confirmar con Janida. Números de teléfono y correos de clientes son de ejemplo."
   },
@@ -10,7 +10,7 @@
     "invoiceSeq": 182
   },
   "settings": {
-    "exchangeRateCOP": 3800,
+    "exchangeRateCOP": 3323.18,
     "referenceCostBoxCOP": 75000,
     "lowStockThresholdBoxes": 20
   },
