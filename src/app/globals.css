@@ -86,6 +86,8 @@ h3 { font-size: 1.18rem; }
 .main-nav { display: flex; gap: 20px; align-items: center; margin-left: auto; font-size: 0.95rem; }
 .main-nav a { color: var(--ink-soft); padding: 6px 2px; border-bottom: 2px solid transparent; }
 .main-nav a:hover { color: var(--brand-strong); text-decoration: none; border-bottom-color: var(--line-strong); }
+/* Hamburguesa: solo visible en móvil (se estila en @media 640) */
+.menu-btn { display: none; }
 .cart-link { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--brand-strong) !important; }
 .cart-link .count {
   background: var(--accent); color: #fff; border-radius: 999px;
@@ -400,29 +402,177 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 
 .notice-toast { position: fixed; bottom: 22px; right: 22px; z-index: 100; background: var(--brand-strong); color: #fff; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 0.9rem; box-shadow: var(--shadow-2); }
 
-/* ---------------- Responsive ---------------- */
+/* ============================================================
+   Responsive — 3 breakpoints:
+   ≤ 940 px  · tableta       : layouts de 2 columnas → 1 columna.
+   ≤ 640 px  · móvil         : header/navegación táctil (scroll
+   horizontal), filtros en <details> colapsable, carrito
+   compacto, tablas admin con scroll horizontal, formularios a
+   16 px (sin zoom de iOS).
+   ≤ 420 px  · móvil pequeño : paddings reducidos, botones
+   del hero a ancho fluido, grilla de catálogo a 1 columna.
+   ============================================================ */
+/* ---- Filtros: resumen del <details>, oculto en escritorio ---- */
+.filters-summary { display: none; }
+
 @media (max-width: 940px) {
-  .catalog-layout { grid-template-columns: 1fr; }
+  body { font-size: 15.5px; }
+  .container { width: min(1160px, 94%); }
+  .site-header .inner { gap: 14px; }
+  .main-nav { gap: 14px; }
+
+  /* Layouts de dos columnas -> una */
+  .catalog-layout { grid-template-columns: 1fr; padding: 28px 0 56px; }
   .filters { position: static; }
   .cart-layout, .checkout-layout, .dash-grid { grid-template-columns: 1fr; }
   .summary-card { position: static; }
-  .grid-2 { grid-template-columns: 1fr; }
-  .site-footer .inner { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; gap: 24px; }
+  .site-footer .inner { grid-template-columns: 1fr 1fr; gap: 26px; padding: 36px 0 22px; }
+  .detail-layout { grid-template-columns: 1fr !important; gap: 24px !important; }
+
+  /* Catálogo: la barra de filtros deja de flotar */
+  .catalog-topbar select { margin-left: 0; }
+
+  /* Admin */
+  .admin-body { padding: 22px 14px 50px; }
+  .admin-topbar { padding: 0 14px; gap: 14px; }
+  .admin-topbar .tabs { margin-left: 6px; gap: 2px; }
+  .admin-topbar .tabs a { padding: 8px 10px; }
+  .admin-topbar .spacer { gap: 8px; }
 }
+
 @media (max-width: 640px) {
-  .site-header .inner { flex-wrap: wrap; height: auto; padding: 10px 0; row-gap: 4px; }
-  .main-nav { margin-left: 0; width: 100%; justify-content: flex-start; gap: 14px; overflow-x: auto; }
-  .hero { padding: 54px 0 50px; }
-  .cart-line { grid-template-columns: 84px 1fr; grid-template-rows: auto auto; }
+  /* -- Header móvil: fila única = logo + hamburguesa;
+        el nav se abre como panel desplegable a ancho completo -- */
+  .site-header { position: sticky; }
+  .site-header .inner { flex-wrap: nowrap; height: 58px; padding: 0; gap: 10px; }
+  .logo { font-size: 1.2rem; }
+  .logo .flower { font-size: 1.05rem; }
+  .menu-btn {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 5px; width: 44px; height: 44px; margin-left: auto; flex: none;
+    background: transparent; border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm); cursor: pointer; padding: 0;
+  }
+  .menu-btn .bar {
+    width: 18px; height: 2px; border-radius: 2px;
+    background: var(--brand-strong); transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .menu-btn.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .menu-btn.open .bar:nth-child(2) { opacity: 0; }
+  .menu-btn.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  .main-nav { display: none; }
+  .main-nav.open {
+    display: flex; flex-direction: column; align-items: stretch; gap: 0;
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-2);
+    padding: 6px 16px 14px; z-index: 60;
+    font-size: 1rem;
+  }
+  .main-nav a {
+    flex: none; width: 100%;
+    padding: 13px 12px; border-bottom: none; border-radius: var(--radius-sm);
+    color: var(--brand-strong); font-weight: 500;
+  }
+  .main-nav a:hover { background: var(--brand-soft); text-decoration: none; }
+  .main-nav a.active { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+  .main-nav .cart-link { display: flex; }
+  .main-nav .cart-link .count { margin-left: auto; }
+  .main-nav .lang-toggle {
+    margin-top: 6px; text-align: center;
+    padding: 9px 12px; border: 1px solid var(--line-strong);
+  }
+
+  /* -- Secciones y grilla -- */
+  .hero { padding: 44px 0 40px; }
+  .hero-stats { gap: 26px; margin-top: 34px; }
+  .hero-stats .stat b { font-size: 1.45rem; }
+  section.block { padding: 42px 0; }
+  .section-head { margin-bottom: 24px; }
+
+  .product-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .grid-cards { gap: 14px; }
+  .value-card { padding: 20px; }
+
+  /* -- Filtros: <details> colapsable (solo móvil) -- */
+  .filters-summary {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 10px;
+    cursor: pointer; list-style: none; outline: none;
+    font-weight: 700; font-size: 0.94rem; color: var(--brand-strong);
+    padding: 14px 18px; margin-bottom: 0;
+  }
+  .filters-summary::-webkit-details-marker { display: none; }
+  .filters-summary::after { content: "▾"; color: var(--ink-faint); font-size: 0.9rem; }
+  .filters-acc[open] > .filters-summary::after { content: "▴"; }
+  .filters-acc {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow-1); margin-bottom: 18px;
+  }
+  .filters-acc > .filters { border: none; box-shadow: none; padding: 4px 18px 18px; }
+  .filters-acc[open] > .filters-summary + .filters { border-top: 1px solid var(--line); }
+
+  /* -- Carrito -- */
+  .cart-line { grid-template-columns: 84px 1fr; gap: 12px 12px; padding: 14px 14px; }
   .cart-line img { width: 84px; height: 63px; /* 4:3 */ }
-  .cart-line .qty-col { justify-self: start; }
-  .cart-line .line-total { grid-column: 2; text-align: left; }
+  .cart-line .qty-col { justify-self: start; flex-direction: row; align-items: center; gap: 10px; }
+  .cart-line .line-total { grid-column: 2; text-align: left; min-width: 0; }
+  .summary-card { padding: 18px; }
+
+  /* -- Formularios: 16 px evita el zoom de iOS al enfocar -- */
+  .field input, .field select, .field textarea,
+  .filters input[type="text"], .filters input[type="number"],
+  .filters input[type="search"] { font-size: 16px; padding: 11px 12px; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span2 { grid-column: span 1; }
-  .admin-topbar { height: auto; padding: 12px 16px; flex-wrap: wrap; }
-  .admin-topbar .tabs { margin-left: 0; width: 100%; }
+  .row-exp { gap: 8px; }
+
+  .panel { padding: 18px; }
+  .page-pad { padding: 30px 0 50px; }
+
+  /* -- Admin -- */
+  .admin-topbar { height: auto; padding: 10px 12px; flex-wrap: wrap; row-gap: 4px; }
+  .admin-topbar .brand { font-size: 1rem; }
+  .admin-topbar .tabs {
+    margin-left: 0; width: 100%;
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .admin-topbar .tabs::-webkit-scrollbar { display: none; }
+  .admin-topbar .tabs a { flex: none; padding: 9px 12px; }
+  .admin-body { padding: 16px 10px 46px; }
+  .admin-h h1 { font-size: 1.3rem; }
+  .kpi .value { font-size: 1.35rem; }
+  .dash-grid { gap: 12px; }
+  .bar-chart { height: 122px; gap: 5px; }
+  .bar-chart .lbl { font-size: 0.58rem; }
+  .bar-chart .val { display: none; }
+  .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table td, .data-table th { padding: 9px 10px; }
+  .modal { padding: 18px; max-height: 94vh; }
+  .modal-overlay { padding: 10px; }
+  .modal-admin { max-width: none; }
+  .notice-toast { left: 16px; right: 16px; text-align: center; }
+  .login-card { padding: 24px; }
   .site-footer .inner { grid-template-columns: 1fr; }
-  .data-table { display: block; overflow-x: auto; }
+  .site-footer .legal { flex-direction: column; }
+}
+
+@media (max-width: 420px) {
+  .hero { padding: 38px 0 34px; }
+  .hero p.lead { font-size: 1.02rem; }
+  .hero-actions { gap: 10px; }
+  .hero-actions .btn { flex: 1 1 auto; min-width: 150px; padding: 12px 18px; }
+  .hero-stats { gap: 18px; margin-top: 28px; }
+  .product-card .body { padding: 14px 14px 16px; }
+  .product-card .name { font-size: 1.05rem; }
+  .product-grid { grid-template-columns: 1fr; }
+  .cart-line { grid-template-columns: 72px 1fr; }
+  .cart-line img { width: 72px; height: 54px; /* 4:3 */ }
+  .track-timeline li { padding-left: 26px; }
+  .track-timeline li::before { left: -7px; width: 12px; height: 12px; }
 }
 
 /* ============================================================
@@ -512,12 +662,6 @@ section.block.alt { background: var(--surface-warm); border-block: 1px solid var
 /* ---- Detalle de producto: colapsar a una columna ---- */
 .detail-layout {
   width: 100%;
-}
-@media (max-width: 940px) {
-  .detail-layout {
-    grid-template-columns: 1fr !important;
-    gap: 24px !important;
-  }
 }
 
 /* ---- Nota informativa ---- */

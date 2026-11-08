@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCart, useLang, useRate } from "../../providers";
 import { format_money, usd_to_cop } from "@/lib/money";
-
 // Forma pública del producto (serializable, ya resuelta por idioma
 // desde el servidor). La venta es por CAJAS ENTERAS.
 export interface PublicProduct {
@@ -33,6 +32,10 @@ export function CatalogClient({ products }: { products: PublicProduct[] }) {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [avail, setAvail] = useState<"all" | "in" | "out">("all");
+  // En móvil los filtros van dentro de un <details> colapsable;
+  // en escritorio el resumen se oculta por CSS y queda siempre
+  // abierto. El estado controla el atributo `open`.
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [justAdded, setJustAdded] = useState<string | null>(null);
 
   const list = useMemo(() => {
@@ -71,6 +74,16 @@ export function CatalogClient({ products }: { products: PublicProduct[] }) {
 
   return (
     <div className="catalog-layout">
+      <details
+        className="filters-acc"
+        open={filtersOpen}
+        onToggle={(e) => {
+          if (e.currentTarget.open !== filtersOpen) setFiltersOpen(e.currentTarget.open);
+        }}
+      >
+        <summary className="filters-summary">
+          <span>{t("catalog.f_title")}</span>
+        </summary>
       <aside className="filters" aria-label={t("catalog.f_variety")}>
         <div className="field" style={{ marginBottom: 4 }}>
           <input
@@ -171,6 +184,7 @@ export function CatalogClient({ products }: { products: PublicProduct[] }) {
           {t("catalog.f_clear")}
         </button>
       </aside>
+      </details>
 
       <div>
         <div className="catalog-topbar">

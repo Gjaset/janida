@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCart, useLang, useRate } from "./providers";
 import { format_money, usd_to_cop } from "@/lib/money";
 import type { Lang } from "@/lib/i18n";
@@ -9,10 +10,28 @@ import type { Lang } from "@/lib/i18n";
 // comes from the injected dictionary (scripts/i18n.py); the
 // toggle hits /api/lang/[to] which sets the cookie server-side,
 // so the WHOLE site re-renders in the other language.
+//
+// Móvil (≤ 640 px): el nav se convierte en menú hamburguesa
+// (botón .menu-btn); el panel desplegable se controla con el
+// estado `menuOpen` y se cierra al navegar o con Escape.
 export function SiteHeader() {
   const { totalBoxes, hydrated } = useCart();
   const { t, lang } = useLang();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Cierra el panel al cambiar de ruta (enlace tocado).
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  // Escape cierra el panel.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   const target: Lang = lang === "en" ? "es" : "en";
   const navItems = [
@@ -32,7 +51,29 @@ export function SiteHeader() {
             <small>{t("common.tagline")}</small>
           </span>
         </Link>
-        <nav className="main-nav">
+
+        <button
+          type="button"
+          className={`menu-btn${menuOpen ? " open" : ""}`}
+          aria-label={t("nav.menu.aria")}
+          aria-expanded={menuOpen}
+          aria-controls="main-nav-panel"
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <span className="bar" />
+          <span className="bar" />
+          <span className="bar" />
+        </button>
+
+        <nav
+          id="main-nav-panel"
+          className={`main-nav${menuOpen ? " open" : ""}`}
+          aria-label={t("nav.menu.aria")}
+          onClick={(e) => {
+            // El toggle de idioma es un <a>; los enlaces navegan — cerrar el panel.
+            if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
+          }}
+        >
           {navItems.map((item) => (
             <Link
               key={item.href}
