@@ -1,348 +1,425 @@
 "use client";
 // ============================================================
-// GESTIÓN DE PRODUCTOS (admin): crear, editar, eliminar, cambiar
-// disponibilidad (paquetes) y precio por paquete, y administrar
-// la galería de URLs de imágenes (pegadas manualmente).
+// GESTIÓN DE PRODUCTOS (admin, en español): crear, editar y
+// eliminar variedades con: bilingüe (nombre/descripción en/ES),
+// cajas: tallos por caja, pedido mínimo, precio USD por caja,
+// costo COP por caja, disponibilidad EN CAJAS y galería de URLs.
 // ============================================================
 import { useCallback, useEffect, useState } from "react";
 import { Modal, ModalHead } from "../../../Modal";
-import { productAdminSchema, type ProductAdminInput } from "@/lib/validation";
 import type { Product } from "@/lib/types";
-import { formatUSD } from "@/lib/currency";
+import { format_money } from "@/lib/money";
 
 const FALLBACK = "/demo-flowers/placeholder.svg";
 
-// -------- Modal de creación/edición --------
+interface FormState {
+  variety: string;
+  name_en: string;
+  name_es: string;
+  desc_en: string;
+  desc_es: string;
+  type: "standard" | "spray";
+  colorFamily: string;
+  stemsPerBox: number;
+  minOrderBoxes: number;
+  pricePerBoxUSD: number;
+  costPerBoxCOP: number;
+  stockBoxes: number;
+  grade: string;
+  galleryUrls: string[];
+  active: boolean;
+}
+
+function emptyForm(): FormState {
+  return {
+    variety: "",
+    name_en: "",
+    name_es: "",
+    desc_en: "",
+    desc_es: "",
+    type: "standard",
+    colorFamily: "red",
+    stemsPerBox: 200,
+    minOrderBoxes: 5,
+    pricePerBoxUSD: 26,
+    costPerBoxCOP: 75000,
+    stockBoxes: 100,
+    grade: "Extra 55 cm",
+    galleryUrls: [],
+    active: true,
+  };
+}
+
+function fromProduct(p: Product): FormState {
+  return {
+    variety: p.variety,
+    name_en: p.name_en,
+    name_es: p.name_es,
+    desc_en: p.desc_en,
+    desc_es: p.desc_es,
+    type: p.type,
+    colorFamily: p.colorFamily,
+    stemsPerBox: p.stemsPerBox,
+    minOrderBoxes: p.minOrderBoxes,
+    pricePerBoxUSD: p.pricePerBoxUSD,
+    costPerBoxCOP: p.costPerBoxCOP,
+    stockBoxes: p.stockBoxes,
+    grade: p.grade,
+    galleryUrls: [...p.galleryUrls],
+    active: p.active,
+  };
+}
+
+// -------- editor en modal --------
 function ProductEditor({
   initial,
+  takenIds,
   onClose,
   onSaved,
 }: {
-  initial: Product | null; // null → crear
+  initial: Product | null;
+  takenIds: Set<string>;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const creating = initial === null;
-  const [form, setForm] = useState<ProductAdminInput & { galleryUrls: string[] }>({
-    name: initial?.name ?? "",
-    variety: initial?.variety ?? "",
-    type: initial?.type ?? "standard",
-    colorFamily: initial?.colorFamily ?? "",
-    presentation: initial?.presentation ?? "Paquete de 200 tallos",
-    packageSize: initial?.packageSize ?? 200,
-    priceUSD: initial?.priceUSD ?? 18,
-    packagesAvailable: initial?.packagesAvailable ?? 100,
-    grade: initial?.grade ?? "Extra 55 cm",
-    description: initial?.description ?? "",
-    galleryUrls: initial?.galleryUrls ?? [],
-    active: initial?.active ?? true,
-  });
-  const [newUrl, setNewUrl] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [form, setForm] = useState<FormState>(initial ? fromProduct(initial) : emptyForm());
   const [busy, setBusy] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [newUrl, setNewUrl] = useState("");
+
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
 
   function addUrl() {
     const u = newUrl.trim();
     if (!u) return;
-    setForm((f) => ({ ...f, galleryUrls: [...f.galleryUrls, u] }));
+    set("galleryUrls", [...form.galleryUrls, u]);
     setNewUrl("");
-  }
-  function removeUrl(idx: number) {
-    setForm((f) => ({ ...f, galleryUrls: f.galleryUrls.filter((_, i) => i !== idx) }));
   }
 
   async function save() {
-    const parsed = productAdminSchema.safeParse(form);
-    if (!parsed.success) {
-      const errs: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        errs[String(issue.path[0])] = issue.message;
-      }
-      setErrors(errs);
-      return;
-    }
     setBusy(true);
-    setApiError(null);
+    setError(null);
     try {
-      const res = await fetch(
-        creating ? "/api/admin/products" : `/api/admin/products/${initial!.id}`,
-        {
-          method: creating ? "POST" : "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed.data),
-        }
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setApiError(data?.error ?? "No se pudo guardar el producto.");
-        return;
+      const res = creating
+        ? await fetch("/api/admin/products", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(form),
+          })
+        : await fetch(`/api/admin/products/${initial!.id}`, {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(form),
+          });
+      if (res.ok) {
+        onSaved();
+        onClose();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? "Datos inválidos.");
       }
-      onSaved();
-      onClose();
     } catch {
-      setApiError("Error de red al guardar.");
-    } finally {
-      setBusy(false);
+      setError("Error de red.");
     }
+    setBusy(false);
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "9px 11px",
-    border: "1px solid var(--line-strong)",
-    borderRadius: 9,
-    fontSize: "0.92rem",
-    background: "#fff",
-    color: "var(--ink)",
-  };
-
+  // El servidor envía el id solo al crear; en edición se ignora.
   return (
     <Modal open onClose={onClose} wide>
-      <ModalHead
-        title={creating ? "Nuevo producto" : `Editar: ${initial!.name}`}
-        sub={
-          creating
-            ? "Se agregará al catálogo público (si está activo)"
-            : `id: ${initial!.id} · cambia disponibilidad, precio y galería`
-        }
-        onClose={onClose}
-      />
-      {apiError && <div className="form-error">{apiError}</div>}
-
+      <ModalHead title={creating ? "Nueva variedad" : `Editar · ${initial!.name_es}`} onClose={onClose} />
+      {error && <div className="form-error">{error}</div>}
       <div className="form-grid">
         <div className="field">
-          <label>Nombre comercial <span className="req">*</span></label>
-          <input style={inputStyle} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Tempo Red" />
-          {errors.name && <div className="err">{errors.name}</div>}
+          <label>Variedad (nombre comercial)</label>
+          <input value={form.variety} onChange={(e) => set("variety", e.target.value)} placeholder="Tempo" />
         </div>
         <div className="field">
-          <label>Variedad <span className="req">*</span></label>
-          <input style={inputStyle} value={form.variety} onChange={(e) => setForm((f) => ({ ...f, variety: e.target.value }))} placeholder="Tempo" />
-          {errors.variety && <div className="err">{errors.variety}</div>}
-        </div>
-        <div className="field">
-          <label>Tipo <span className="req">*</span></label>
-          <select style={inputStyle} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ProductAdminInput["type"] }))}>
-            <option value="standard">Standard (flor grande)</option>
-            <option value="spray">Spray (mini clavel)</option>
+          <label>Tipo</label>
+          <select value={form.type} onChange={(e) => set("type", e.target.value as "standard")}>
+            <option value="standard">Clavel estándar</option>
+            <option value="spray">Mini clavel (spray)</option>
           </select>
         </div>
         <div className="field">
-          <label>Familia de color <span className="req">*</span></label>
-          <input style={inputStyle} value={form.colorFamily} onChange={(e) => setForm((f) => ({ ...f, colorFamily: e.target.value }))} placeholder="Rojo" />
-          {errors.colorFamily && <div className="err">{errors.colorFamily}</div>}
+          <label>Nombre (EN)</label>
+          <input value={form.name_en} onChange={(e) => set("name_en", e.target.value)} />
         </div>
         <div className="field">
-          <label>Presentación <span className="req">*</span></label>
-          <input style={inputStyle} value={form.presentation} onChange={(e) => setForm((f) => ({ ...f, presentation: e.target.value }))} />
+          <label>Nombre (ES)</label>
+          <input value={form.name_es} onChange={(e) => set("name_es", e.target.value)} />
+        </div>
+        <div className="field span2">
+          <label>Descripción (EN)</label>
+          <textarea rows={2} value={form.desc_en} onChange={(e) => set("desc_en", e.target.value)} />
+        </div>
+        <div className="field span2">
+          <label>Descripción (ES)</label>
+          <textarea rows={2} value={form.desc_es} onChange={(e) => set("desc_es", e.target.value)} />
         </div>
         <div className="field">
-          <label>Grado del tallo <span className="req">*</span></label>
-          <input style={inputStyle} value={form.grade} onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))} />
+          <label>Color (familia)</label>
+          <select value={form.colorFamily} onChange={(e) => set("colorFamily", e.target.value)}>
+            {["white", "pink", "salmon", "picotee", "fuchsia", "mix"].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field">
-          <label>Precio por paquete (USD) <span className="req">*</span></label>
-          <input type="number" step="0.25" min="1" style={inputStyle} value={form.priceUSD} onChange={(e) => setForm((f) => ({ ...f, priceUSD: Number(e.target.value) }))} />
-          {errors.priceUSD && <div className="err">{errors.priceUSD}</div>}
+          <label>Grado</label>
+          <input value={form.grade} onChange={(e) => set("grade", e.target.value)} />
         </div>
         <div className="field">
-          <label>Disponibilidad (paquetes) <span className="req">*</span></label>
-          <input type="number" step="1" min="0" style={inputStyle} value={form.packagesAvailable} onChange={(e) => setForm((f) => ({ ...f, packagesAvailable: Number(e.target.value) }))} />
-          {errors.packagesAvailable && <div className="err">{errors.packagesAvailable}</div>}
+          <label>Tallos por caja</label>
+          <input
+            type="number"
+            min={1}
+            value={form.stemsPerBox}
+            onChange={(e) => set("stemsPerBox", Number(e.target.value))}
+          />
         </div>
         <div className="field">
-          <label>Tallos por paquete</label>
-          <input type="number" step="1" min="1" style={inputStyle} value={form.packageSize} onChange={(e) => setForm((f) => ({ ...f, packageSize: Number(e.target.value) }))} />
-          <div className="opt" style={{ fontSize: "0.75rem", color: "var(--ink-faint)" }}>
-            Estándar del negocio: 200 (la venta es solo en paquetes cerrados)
-          </div>
+          <label>Pedido mínimo (cajas)</label>
+          <input
+            type="number"
+            min={1}
+            value={form.minOrderBoxes}
+            onChange={(e) => set("minOrderBoxes", Number(e.target.value))}
+          />
         </div>
         <div className="field">
-          <label>Activo en catálogo</label>
+          <label>Precio por caja (USD)</label>
+          <input
+            type="number"
+            min={0.5}
+            step="0.5"
+            value={form.pricePerBoxUSD}
+            onChange={(e) => set("pricePerBoxUSD", Number(e.target.value))}
+          />
+        </div>
+        <div className="field">
+          <label>Costo por caja (COP)</label>
+          <input
+            type="number"
+            min={0}
+            step={1000}
+            value={form.costPerBoxCOP}
+            onChange={(e) => set("costPerBoxCOP", Number(e.target.value))}
+          />
+        </div>
+        <div className="field">
+          <label>Disponibilidad (cajas)</label>
+          <input
+            type="number"
+            min={0}
+            value={form.stockBoxes}
+            onChange={(e) => set("stockBoxes", Number(e.target.value))}
+          />
+        </div>
+        <div className="field">
+          <label>Visible en el catálogo</label>
           <select
-            style={inputStyle}
-            value={String(form.active)}
-            onChange={(e) => setForm((f) => ({ ...f, active: e.target.value === "true" }))}
+            value={form.active ? "1" : "0"}
+            onChange={(e) => set("active", e.target.value === "1")}
           >
-            <option value="true">Sí — visible</option>
-            <option value="false">No — oculto</option>
+            <option value="1">Sí</option>
+            <option value="0">No</option>
           </select>
-        </div>
-        <div className="field span2">
-          <label>Descripción <span className="req">*</span></label>
-          <textarea rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          {errors.description && <div className="err">{errors.description}</div>}
-        </div>
-
-        {/* Galería de URLs */}
-        <div className="field span2">
-          <label>Galería de imágenes (URLs externas — pega manualmente) <span className="req">*</span></label>
-          <div className="gallery-editor">
-            <div className="url-add">
-              <input
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="https://cdn.example.com/foto-tempo-red-01.jpg"
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addUrl())}
-              />
-              <button type="button" className="btn btn-outline btn-sm" onClick={addUrl}>
-                + Agregar URL
-              </button>
-            </div>
-            {errors.galleryUrls && <div className="err" style={{ marginTop: 8 }}>{errors.galleryUrls}</div>}
-            <ul style={{ marginTop: newUrl || form.galleryUrls.length ? undefined : 0 }}>
-              {form.galleryUrls.map((u, i) => (
-                <li key={`${u}-${i}`}>
-                  <img src={u} alt="" onError={(e) => ((e.target as HTMLImageElement).src = FALLBACK)} />
-                  <code>{u}</code>
-                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeUrl(i)}>
-                    Quitar
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="opt" style={{ fontSize: "0.75rem", color: "var(--ink-faint)", marginTop: 10 }}>
-              Primera imagen = portada del catálogo. También sirven rutas
-              locales como <code>/demo-flowers/tempo-red-1.svg</code>.
-            </div>
-          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-        <button type="button" className="btn btn-outline" onClick={onClose}>Cancelar</button>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
-          {busy ? "Guardando…" : creating ? "Crear producto" : "Guardar cambios"}
+      <h4 style={{ margin: "14px 0 8px" }}>Galería de imágenes</h4>
+      <div className="gallery-editor">
+        <div className="url-add">
+          <input
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            placeholder="Pega una URL: https://… o /ruta/imagen.svg"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addUrl();
+              }
+            }}
+          />
+          <button type="button" className="btn btn-outline btn-sm" onClick={addUrl}>
+            Agregar
+          </button>
+        </div>
+        {form.galleryUrls.length === 0 && (
+          <p style={{ fontSize: "0.82rem", color: "var(--danger)", margin: "8px 0 0" }}>
+            Agrega al menos una URL de imagen.
+          </p>
+        )}
+        <ul>
+          {form.galleryUrls.map((u, i) => (
+            <li key={u + i}>
+              <img src={u} alt="" onError={fallbackToPlaceholder} />
+              <code>{u}</code>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => set("galleryUrls", form.galleryUrls.filter((_, j) => j !== i))}
+              >
+                Quitar
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button type="button" className="btn btn-outline" onClick={onClose}>
+          Cancelar
+        </button>
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={save}>
+          {busy ? "Guardando…" : "Guardar"}
         </button>
       </div>
     </Modal>
   );
 }
 
-// -------- Tabla principal --------
+function fallbackToPlaceholder(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.src = FALLBACK;
+}
+
 export default function ProductsAdmin() {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
-  const [filter, setFilter] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    fetch("/api/admin/products")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => setProducts(d.products ?? []))
-      .catch(() => setProducts([]));
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/products");
+    if (res.ok) {
+      const j = await res.json();
+      setProducts(j.products);
+    }
   }, []);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  async function toggleActive(p: Product) {
-    await fetch(`/api/admin/products/${p.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...p, active: !p.active }),
-    });
-    load();
-  }
-
-  async function remove(p: Product) {
-    if (!confirm(`¿Eliminar "${p.name}" del catálogo? Los pedidos históricos conservan su información.`)) return;
+  async function removeProduct(p: Product) {
+    if (!window.confirm(`¿Eliminar "${p.name_es}" del catálogo?`)) return;
     await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
-    load();
+    setMessage(`Producto eliminado: ${p.name_es}`);
+    void load();
   }
 
-  const shown = (products ?? []).filter((p) =>
-    `${p.name} ${p.variety} ${p.colorFamily}`.toLowerCase().includes(filter.toLowerCase())
-  );
+  const takenIds = new Set((products ?? []).map((p) => p.id));
 
   return (
     <>
       <div className="admin-h">
         <div>
-          <h1 style={{ margin: 0 }}>Productos</h1>
+          <h1>Productos</h1>
           <div className="admin-opt">
-            Catálogo de claveles · venta exclusivamente en paquetes de 200 tallos
+            Venta por cajas enteras de 200 tallos · precio y costo por caja
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtrar por nombre, variedad o color…"
-            style={{ padding: "9px 12px", border: "1px solid var(--line-strong)", borderRadius: 9, width: 280, fontSize: "0.9rem" }}
-          />
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Nuevo producto</button>
-        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+          + Nueva variedad
+        </button>
       </div>
 
-      {products === null && <p>Cargando productos…</p>}
+      {message && <div className="form-ok">{message}</div>}
 
-      {products !== null && (
+      {!products ? (
+        <p>Cargando…</p>
+      ) : products.length === 0 ? (
+        <div className="empty-state">
+          <div className="big">🌸</div>
+          <p>No hay productos. Crea la primera variedad.</p>
+        </div>
+      ) : (
         <table className="data-table">
           <thead>
             <tr>
               <th></th>
-              <th>Producto</th>
-              <th>Tipo</th>
-              <th>Precio / paquete</th>
-              <th>Disponibilidad</th>
-              <th>Estado</th>
-              <th style={{ textAlign: "right" }}>Acciones</th>
+              <th>Variedad (ES / EN)</th>
+              <th>Tallos × caja</th>
+              <th>Mín. cajas</th>
+              <th>Precio caja</th>
+              <th>Costo caja</th>
+              <th>Stock (cajas)</th>
+              <th>Visible</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {shown.map((p) => (
+            {products.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <img className="thumb" src={p.galleryUrls[0] ?? FALLBACK} alt="" onError={(e) => ((e.target as HTMLImageElement).src = FALLBACK)} />
+                  <img
+                    className="thumb"
+                    src={p.galleryUrls[0] ?? FALLBACK}
+                    alt=""
+                    onError={fallbackToPlaceholder}
+                  />
                 </td>
                 <td className="strong">
-                  {p.name}
-                  <div style={{ fontSize: "0.75rem", color: "var(--ink-faint)" }}>
-                    {p.variety} · {p.colorFamily} · {p.grade} · {p.galleryUrls.length} img.
-                  </div>
+                  {p.name_es} / {p.name_en}
+                  <br />
+                  <small style={{ color: "var(--ink-faint)" }}>{p.grade}</small>
                 </td>
-                <td>{p.type === "spray" ? "Spray" : "Standard"}</td>
-                <td className="strong" style={{ whiteSpace: "nowrap" }}>
-                  {formatUSD(p.priceUSD)}
-                  <div style={{ fontSize: "0.72rem", color: "var(--ink-faint)" }}>por {p.packageSize} tallos</div>
-                </td>
-                <td className="strong" style={{ whiteSpace: "nowrap" }}>
-                  {p.packagesAvailable} paq.
-                  {p.packagesAvailable <= 80 && <span className="badge badge-low" style={{ marginLeft: 6 }}>bajo</span>}
-                </td>
+                <td>{p.stemsPerBox}</td>
+                <td>{p.minOrderBoxes}</td>
+                <td>{format_money(p.pricePerBoxUSD)}</td>
+                <td>{format_money(p.costPerBoxCOP, { currency: "COP", decimals: 0 })}</td>
                 <td>
-                  <button className={`chip ${p.active ? "selected" : ""}`} onClick={() => toggleActive(p)} title="Clic para cambiar">
-                    {p.active ? "Activo" : "Oculto"}
-                  </button>
+                  <span
+                    className={`badge ${
+                      p.stockBoxes === 0 ? "badge-out" : p.stockBoxes <= 20 ? "badge-low" : "badge-package"
+                    }`}
+                  >
+                    {p.stockBoxes}
+                  </span>
                 </td>
+                <td>{p.active ? "Sí" : "No"}</td>
                 <td>
                   <div className="table-actions">
-                    <button className="btn btn-outline btn-sm" onClick={() => setEditing(p)}>Editar</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => remove(p)}>Eliminar</button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setEditing(p)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      onClick={() => removeProduct(p)}
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-            {shown.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--ink-faint)" }}>Sin productos que coincidan.</td></tr>
-            )}
           </tbody>
         </table>
       )}
 
-      {creating && (
-        <ProductEditor
-          initial={null}
-          onClose={() => setCreating(false)}
-          onSaved={load}
-        />
-      )}
-      {editing && (
+      {(creating || editing !== null) && (
         <ProductEditor
           initial={editing}
-          onClose={() => setEditing(null)}
-          onSaved={load}
+          takenIds={takenIds}
+          onClose={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            setMessage("Cambios guardados.");
+            void load();
+          }}
         />
       )}
     </>
