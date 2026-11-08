@@ -1,30 +1,60 @@
 # JANIDA SAS — Sitio corporativo de exportación de claveles
 
-Aplicación web completa para **JANIDA SAS**, empresa colombiana que exporta
-**claveles** hacia el mercado mayorista de **Estados Unidos**. Incluye:
+Aplicación web completa para **JANIDA SAS**, empresa colombiana que compra flor
+a **cultivos aliados** de la Sabana de Bogotá, la revisa y cuenta en su propia
+**poscosecha** y la exporta por avión hacia el mercado mayorista de
+**Estados Unidos**. Incluye:
 
-- 🏡 **Presentación corporativa**: hero, propuesta de valor, quiénes somos,
-  proceso de exportación y contacto (con formulario).
-- 🌸 **Catálogo de claveles**: 8 variedades demo, venta **exclusivamente en
-  paquetes cerrados de 200 tallos**, precios entre **USD 17 y USD 20** por
-  paquete, filtros por tipo/color/precio/disponibilidad, búsqueda y galería
-  de imágenes por variedad (URLs que el admin pega manualmente).
-- 🛒 **Carrito persistente** (localStorage), cantidades **solo en paquetes**,
-  totales en **USD y COP con conversión automática**.
-- 💳 **Checkout con pago simulado** (MockPay, tipo Stripe): tarjetas de
-  prueba con estados de éxito y fallo — **no hay cargos reales**.
-- 🔐 **Panel admin protegido** (único admin por variables de entorno):
-  dashboard de métricas, CRUD de productos con galería, gestión de pedidos
-  con flujo **pendiente → confirmado → en tránsito → entregado** (+ cancelar).
+- 🌷 **Presentación corporativa bilingüe** (inglés por defecto, botón de
+  español en el encabezado): historia real de la empresa —sin fincas propias,
+  control de calidad y conteo en poscosecha, equipo (2 socios, 4 en
+  poscosecha, 1 en transporte), proceso de 4 días con documentos **ICA y
+  DIAN**, sostenibilidad (separación de plástico/caucho y residuos de flor
+  como forraje) y contacto.
+- 🌸 **Catálogo mayorista**: venta **exclusivamente en cajas enteras selladas
+  de 200 tallos**. El clavel estándar tiene el precio real de Janida
+  (**US$ 26–28 por caja**); los precios de las demás variedades son de
+  ejemplo: **por confirmar con Janida**. Filtros por tipo/color/precio/
+  disponibilidad, precio por caja **y** por tallo (3 decimales), equivalente
+  en COP con la tasa del sistema.
+- 🛒 **Carrito y checkout B2B con factura**: **no se piden datos de tarjeta**.
+  El comprador elige las **condiciones de pago** (prepago o crédito a 30/60/90
+  días), recibe una **factura comercial** (`FAC-…`) con vencimiento, y el
+  pedido se emite con número (`ORD-…`), guía aérea (AWB) y fecha estimada de
+  entrega = **pago + 4 días** (2 de recogida/preparación + 2 de vuelo).
+- 📦 **Seguimiento completo con eventos**: escalera de **10 estados**
+  (pedido recibido → pago confirmado → recogida programada → recogido en
+  finca aliada → revisión y conteo en poscosecha → documentos de exportación
+  listos → entregado a la aerolínea → en tránsito → llegada a EE. UU. →
+  entregado), timeline vertical, conteo verificado («600 de 600 tallos
+  contados»), incidencias (retraso **+3 días**, retención en aduana **+4
+  días**) que corren la ETA. El cliente consulta **solo su pedido** con
+  número de pedido + correo de la factura.
+- 📊 **Panel admin** (en español, único admin por variables de entorno):
+  dashboard con selector de periodo (30 d / 90 d / 12 m), KPIs de ventas,
+  cajas/tallos, margen por caja, cartera por cobrar y antigüedad, entregas a
+  tiempo, incidencias, gráficas con valores, tablas de facturas vencidas y
+  pedidos con problemas, inventario bajo y **simulador del dólar** (cuánto
+  mueve el margen si el dólar baja 100 pesos). Gestión de pedidos (avanzar
+  estado, confirmar pago, cancelar, registrar incidencias) y CRUD de
+  productos con campos bilingües y galería de URLs.
+
+> Los textos visibles del sitio público provienen **todos** de un único
+> diccionario (`scripts/i18n.py` → `src/lib/i18n.json`); el formato de dinero
+> pasa por una única función `format_money()` (`src/lib/money.ts`) — nunca se
+> escribe un `$` a mano en las plantillas.
 
 ---
 
 ## 1) Instalación y ejecución local
 
-Requisitos: **Node 18+** (probado con Node 22). No se necesita base de datos.
+Requisitos: **Node 18+** (probado con Node 22) y **Python 3** para regenerar
+el diccionario. No se necesita base de datos.
 
 ```bash
 npm install          # dependencias
+npm run seed         # genera data/demo-seed.json (~40–45 pedidos en 12 meses)
+npm run demo:reset   # restaura data/db.json desde la semilla
 npm run dev          # http://localhost:3100
 ```
 
@@ -38,12 +68,15 @@ npm start            # http://localhost:3100
 Utilidades incluidas:
 
 ```bash
-npm run demo:reset   # restaura data/db.json desde la semilla demo
-npm run demo:images  # regenera las imágenes SVG de demo en public/demo-flowers
-npm run hash:password -- "TuClaveNueva"   # genera hash para ADMIN_PASSWORD_HASH
+npm run i18n:build   # regenera src/lib/i18n.json desde scripts/i18n.py
+npm run demo:images  # regenera las imágenes SVG en public/demo-flowers
+npm run hash:password -- "TuClaveNueva"   # hash para ADMIN_PASSWORD_HASH
 ```
 
-### Credenciales de demostración del panel admin
+> El `package.json` declara `"type": "module"`: los scripts de Node usan
+> sintaxis ESM de forma nativa.
+
+### Credenciales de acceso al panel
 
 - URL: `/admin/login` (también se llega automáticamente desde cualquier
   ruta `/admin/*` sin sesión).
@@ -58,216 +91,287 @@ npm run hash:password -- "TuClaveNueva"   # genera hash para ADMIN_PASSWORD_HASH
 
 ## 2) Variables de entorno (ver `.env.example`)
 
-| Variable | Valor demo | Descripción |
+| Variable | Valor de ejemplo | Descripción |
 |---|---|---|
 | `ADMIN_EMAIL` | `admin@janida.co` | Correo de inicio de sesión del admin |
 | `ADMIN_PASSWORD_HASH` | (hash de `admin123`) | Hash **scrypt** del password; **nunca** el password en claro |
-| `ADMIN_SESSION_SECRET` | demo… | Semilla HMAC-SHA256 que firma la cookie de sesión (12 h de vida) |
-| `CURRENCY_BASE` | `USD` | Moneda base de **almacenamiento** y cálculo |
-| `EXCHANGE_RATE_COP` | `4200` | Tasa de cambio demo: **1 USD = 4 200 COP** (puede usar decimales) |
-| `PAYMENT_PROVIDER` | `mock` | Proveedor del checkout (`mock` hoy; `stripe` al migrar) |
-| `PAYMENT_MOCK_*` | demo | Claves del gateway simulado |
-| `NEXT_PUBLIC_DEMO_MODE` | `true` | Muestra avisos de demo en la UI |
-| `NEXT_PUBLIC_PACKAGE_SIZE` | `200` | Tallos por paquete (la única unidad de venta) |
-| `LOW_STOCK_THRESHOLD_PACKAGES` | `80` | Umbral de paquetes para alertas de bajo inventario |
+| `ADMIN_SESSION_SECRET` | (cadena larga) | Semilla HMAC-SHA256 que firma la cookie de sesión (12 h de vida) |
+| `EXCHANGE_RATE_COP` | `4200` | Tasa inicial: **1 USD = 3 800 COP** en la semilla (se guarda en `settings` del almacén) |
+| `LOW_STOCK_THRESHOLD_BOXES` | `20` | Umbral de **cajas** para las alertas de inventario bajo del dashboard |
 
 ⚠️ **Importante sobre `.env`**: Next.js expande `$VARIABLE` en los archivos
-de entorno. El hash sí usa `$` como separador y por eso en `.env` esos
-signos van **escapados con `\$`** (así está escrito en `.env.example` y
-`.env`). Si regeneras el hash con `npm run hash:password`, escapa los
-signos de dólar al copiarlo a `.env`:
+de entorno. El hash usa `$` como separador y por eso en `.env` esos signos
+van **escapados con `\$`** (así está escrito en `.env.example` y `.env`):
 
 ```
 # generado:  scrypt$n=16384$...$salt$hash
 # en .env:   scrypt\$n=16384\$...\$salt\$hash
 ```
 
-El servidor lee la tasa de cambio (`EXCHANGE_RATE_COP`) y la expone al
-navegador por `GET /api/meta`; **el cliente nunca la calcula**. Cambiar la
-variable y reiniciar es todo lo que se necesita para recalcular COP en toda
-la UI (los pedidos históricos conservan la tasa registrada al momento del
-pago).
+La tasa de cambio vive en `settings.exchangeRateCOP` del almacén (la semilla
+trae **3 800**) y se expone al navegador por `GET /api/meta`; **el cliente
+nunca la calcula**. El margen del dashboard usa la tasa de `settings`.
 
 ---
 
-## 3) Probar el flujo completo en demo
+## 3) Flujo completo
 
-1. **Catálogo** (`/catalog`): filtra por tipo, color, precio 17–20 USD o
-   búsqueda; la disponibilidad muestra **paquetes** (y su equivalente en
-   tallos). Clic en la imagen abre la **galería**.
-2. Agrega **paquetes** con «+ Add package» o desde la ficha con la
-   cantidad que quieras (enteros, 1 paquete mínimo).
-3. **Carrito** (`/cart`): modifica cantidades por paquete, quita líneas y
-   revisa subtotales en USD y COP. El carrito persiste aunque cierres el
-   navegador (localStorage).
-4. **Checkout** (`/checkout`): completa los datos del comprador y la
-   dirección de envío en EE. UU. Al continuar se crea una sesión de pago
-   (equivalente a un `PaymentIntent`) y el carrito se consume.
-5. **Pago simulado** (`/pay/{pid}`): hoja de MockPay con tarjetas de prueba:
+1. **Catálogo** (`/catalog`): filtra por tipo (estándar / mini clavel),
+   color, rango de precio por caja y disponibilidad; añade cajas directamente
+   (el botón respeta el pedido mínimo de cada variedad).
+2. **Ficha de producto** (`/catalog/{id}`): tabla «Cómo se vende» — unidad de
+   venta (caja entera sellada), tallos por caja, precio por caja (USD + COP),
+   precio **por tallo** (3 decimales) y pedido mínimo. Paso en múltiplos del
+   mínimo.
+3. **Carrito** (`/cart`): cada línea muestra «n cajas = m tallos», avisos de
+   mínimo/stock, resumen de cajas, tallos totales y subtotal USD/COP.
+   Persiste en `localStorage`.
+4. **Checkout** (`/checkout`): datos del comprador (empresa, dirección en
+   EE. UU., correo corporativo) + **condiciones de pago**: prepago,
+   net 30, net 60 o net 90. Sin tarjetas: se emite una **factura**.
+5. **Confirmación** (`/orders/{ORD-…}`): número de pedido, factura emitida
+   con vencimiento, resumen de cajas/tallos, AWB, entrega estimada y próximos
+   pasos.
+6. **Seguimiento** (`/track`): consulta con **número de pedido + correo**.
+   Muestra estado de la factura (pagada / por pagar / vencida), AWB, ETA,
+   timeline vertical (estado actual en rosa, anteriores en verde, pendientes
+   en gris) e incidencias con su corrimiento de ETA.
+7. **Panel admin** (`/admin`): dashboard → pedidos → productos.
 
-   | Número | Resultado |
-   |---|---|
-   | `4242 4242 4242 4242` | ✅ Aprobada (Visa) |
-   | `5555 5555 5555 4444` | ✅ Aprobada (Mastercard) |
-   | `3782 822463 10005` | ✅ Aprobada (Amex) |
-   | `4000 0000 0000 0002` | ❌ Declinada (permite reintentar con otra tarjeta) |
-   | `4000 0000 0000 9995` | ❌ Fondos insuficientes |
-   | `4000 0000 0000 0069` | ❌ Expirada |
-
-   No hay validación real de tarjetas ni conexión a redes de pago. La capa
-   ya deja listo el reemplazo por Stripe (ver
-   [`docs/STRIPE-INTEGRATION.md`](docs/STRIPE-INTEGRATION.md)).
-6. **Confirmación** (`/orders/{id}`): resumen público del pedido con estado
-   inicial «pendiente».
-7. **Panel admin** (`/admin`): dashboard, productos y pedidos.
-
-### Flujo de estados de pedido (admin)
+### Escalera de estados del pedido (admin)
 
 ```
-pendiente ──→ confirmado ──→ en tránsito ──→ entregado
-    │              │
-    └── cancelado ←┘   (solo desde pendiente o confirmado)
+pedido recibido → pago confirmado → recogida programada → recogido en finca
+→ revisión y conteo en poscosecha → documentos listos (ICA/DIAN)
+→ entregado a aerolínea → en tránsito → llegada a EE. UU. → entregado
+                                    │
+                                    └── cancelado (solo antes de aerolínea)
 ```
 
-- Transiciones inválidas se rechazan **en servidor** (HTTP 409).
-- Al **cancelar**, los paquetes vuelven al inventario y el pedido **sale**
-  de las métricas de ventas.
-- Cualquier transición válida queda registrada en el **historial** del
-  pedido, visible en su detalle.
+- El admin avanza **un estado a la vez** (la API rechaza saltos con 409).
+- **Confirmar pago** marca la factura pagada y **recalcula la ETA**
+  (pago + 4 días + corrimientos por incidencias).
+- **Incidencias**: retraso (+3 días) o retención en aduana (+4 días); la ETA
+  se corre automáticamente y el evento queda en el timeline del cliente.
+- **Cancelar**: permitido solo antes de entregar a la aerolínea; las cajas
+  **vuelven al inventario** y el pedido sale de las métricas de ventas.
+- En «revisión y conteo en poscosecha» el pedido registra el conteo
+  verificado (visible en `/track` como «600 de 600 tallos contados»).
 
 ---
 
-## 4) Almacén de datos (mock, sin base de datos)
+## 4) Almacén de datos (sin base de datos)
 
-- **`data/db.json`** es la «base de datos» de demostración (productos,
-  pedidos, intentos de pago, contactos, contadores). Se crea solo la
-  primera vez que se ejecuta la app.
-- **`data/demo-seed.json`** es la semilla con los **datos de ejemplo
-  claramente marcados** (variedades ficticias, números redondos, teléfonos
-  y correos de ejemplo).
-- Regenera todo con `npm run demo:reset` (o el botón «Restaurar datos
-  demo» del dashboard de admin).
+- **`data/db.json`** es el almacén activo (productos, clientes, pedidos,
+  líneas de pedido, eventos de tracking, contactos, contadores y
+  `settings`). Se crea la primera vez que se ejecuta la app copiando la
+  semilla.
+- **`data/demo-seed.json`** se regenera con `npm run seed`: **~40–45 pedidos en
+  12 meses** con picos en febrero (San Valentín) y mayo (Día de la Madre),
+  6 clientes (3 grandes con crédito 60/90 y ~80–85 % de las ventas, 3
+  pequeños prepago), facturas vencidas, pedidos con incidencias y pedidos en
+  estados distintos para exhibir el seguimiento. El `meta` de la semilla
+  documenta explicitamente que los precios/teléfonos/correos son de ejemplo.
+- Restaura con `npm run demo:reset`.
 
-Todas las páginas/API acceden a los datos por un único módulo,
-`src/lib/store.ts` (cola de escritura atómica + transacciones). Migrar a
-PostgreSQL/MongoDB/SQLite significa reimplementar ese módulo con las mismas
-funciones: el resto de la app no cambia. Las tablas/colecciones sugeridas
-están descritas en `src/lib/types.ts`.
+Todos los accesos pasan por un único módulo, `src/lib/store.ts` (cola de
+escritura atómica + transacciones). Migrar a PostgreSQL/MongoDB/SQLite
+significa reimplementar ese módulo con las mismas funciones: el resto de la
+app no cambia. Los «contratos» de tablas están descritos en
+`src/lib/types.ts`.
 
-### Datos de ejemplo (se reemplazan desde el admin)
+### Modelos de datos clave
 
-| Producto | Tipo | Color | Precio/paq. USD | Disponibilidad |
-|---|---|---|---:|---:|
-| Tempo Red | Standard | Rojo | 18.50 | 240 paq. |
-| Baltico White | Standard | Blanco | 19.00 | 180 paq. |
-| Quicksand Rosado | Standard | Rosa | 18.00 | 160 paq. |
-| Trapz Fucsia | Standard | Fucsia | 19.50 | 60 paq. (bajo) |
-| Barca Mini (Spray) | Spray | Fucsia | 17.50 | 300 paq. |
-| Omea Lila (Spray) | Spray | Lila | 17.00 | 210 paq. |
-| Domingo Rojo | Standard | Rojo | 18.20 | 120 paq. |
-| Loreto Picotee (Spray) | Spray | Blanco picnic | 18.80 | 70 paq. (bajo) |
+| Entidad | Campos notables |
+|---|---|
+| `products` | `name_en/name_es/desc_en/desc_es` (bilingüe), `stemsPerBox` (200), `minOrderBoxes`, `pricePerBoxUSD`, `costPerBoxCOP`, `stockBoxes`, `galleryUrls` |
+| `orders` | `buyer` (snapshot), `paymentTerms` (prepaid/net30/net60/net90), `invoiceNumber`, `invoiceDate`, `dueDate`, `paymentStatus`, `paidAt`, `awb`, `estimatedDelivery`, `status` |
+| `order_items` | `boxes` (entero), `stems = boxes × stemsPerBox`, `pricePerBoxUSD`, `costPerBoxCOP` (margen) |
+| `tracking_events` | `type` (status/incident), `status` o `incidentKind`, `at`, `location` (traducido vía `loc.*`), `note`, `recordedBy`, `etaShiftDays` |
 
-Las galerías apuntan a **imágenes SVG de demostración** generadas en
-`public/demo-flowers/` (regenerables con `npm run demo:images`). El
-administrador puede **pegar URLs externas reales** para cada producto
-(desde el panel: Productos → Editar → «Galería de imágenes»); si una URL
-falla, la app muestra un marcador de posición en vez de romperse.
+### Precios (dato real vs ejemplo)
+
+| Producto | Tipo | Color | Precio caja (USD) | Origen |
+|---|---|---|---:|---|
+| Candela Picotee | Estándar | picotee | **26.00** | **Rango real Janida** (clavel estándar US$26–28; los demás precios son ejemplo) |
+| Solano Salmón | Estándar | salmón | 26.50 | Ejemplo · por confirmar con Janida |
+| Mora Carmesí | Estándar | fucsia/vino | 26.50 | Ejemplo · por confirmar con Janida |
+| Quicksand Rosado | Estándar | rosado | 27.00 | Ejemplo · por confirmar con Janida |
+| Baltico Blanco | Estándar | blanco | 28.00 | Ejemplo · por confirmar con Janida |
+| Arctica Mini Blanco | Mini | blanco | 22.50 | Ejemplo · por confirmar con Janida |
+| Stealth Mini Rosado | Mini | rosado | 23.00 | Ejemplo · por confirmar con Janida |
+| Mini Surtido | Mini | surtido | 21.50 | Ejemplo · por confirmar con Janida |
+| Trapz Fucsia Mini | Mini | fucsia | 21.00 | Ejemplo · por confirmar con Janida (stock bajo) |
+
+Los filtros de color del catálogo (blanco, rosado, salmón, picotee, fucsia,
+surtido) fueron ajustados a las **fotos reales** de Janida: 23 fotografías en
+`public/carnations/` (origen: carpeta `src/img` del proyecto) asignadas a cada
+variedad para que **el color del filtro coincida con el color de la foto**.
+No existen productos ni filtros de rojo, lila, verde o amarillo porque no hay
+fotos de ese color. El admin puede **agregar o reemplazar URLs de fotos**
+por producto (Productos → Editar → «Galería de imágenes»); si una URL falla,
+muestra un marcador en vez de romperse.
 
 ---
 
-## 5) Seguridad implementada
+## 5) Internacionalización (i18n)
 
-- **Contraseñas**: hash **scrypt** (módulo nativo de Node, equivalente a
-  bcrypt en propósito) con comparación en tiempo constante. Ningún password
-  vive en claro en el código.
+- **Fuente única**: `scripts/i18n.py` — diccionario `en`/`es` con paridad de
+  claves validada en build (falla si falta una clave en un idioma).
+  Genera `src/lib/i18n.json` (`npm run i18n:build`).
+- **Idioma por defecto**: inglés. El botón del encabezado alterna a español
+  vía `GET /api/lang/es|en` que fija la cookie **`janida_lang`** y redirige
+  a la página original.
+- **Servidor**: `t(lang, key, vars)` + `getLangCookie()` en
+  `src/lib/i18n.ts`. **Cliente**: `useLang()` del `LangProvider`
+  (diccionario inyectado por el layout público).
+- Los nombres y descripciones de producto se almacenan **en ambos idiomas**
+  en la base de datos.
+
+---
+
+## 6) Seguridad implementada
+
+- **Contraseñas**: hash **scrypt** con comparación en tiempo constante.
+  Ningún password vive en claro en el código.
 - **Sesión de admin**: cookie **HttpOnly** + `SameSite=Lax` (+ `Secure` en
-  producción), firmada con **HMAC-SHA256** y expiración a 12 h. El guard
-  vive en el layout de servidor `src/app/admin/(panel)/layout.tsx`, y
-  **todas** las rutas `/api/admin/*` lo vuelven a verificar (401 si no hay
-  sesión) — defensa en profundidad por si el layout no alcanza.
-- **Validación de formularios**: schemas **zod** tanto en cliente (mensajes
-  amigables) como en servidor (422 con detalle por campo). Los totales de
-  pedido se **recalculan siempre en servidor** con los precios del almacén:
-  el frontend no decide precios.
-- **Inventario**: descuenta al aprobar pago y devuelve al cancelar; no se
-  puede comprar más de la disponibilidad (validado en servidor en el
-  momento del pago, por si el stock cambió mientras se completaba el
-  checkout).
-- **Idempotencia de pago**: un intento aprobado no puede procesarse dos
-  veces; tras un rechazo se permite reintentar (comportamiento tipo Stripe).
+  producción), firmada con **HMAC-SHA256** (12 h). El guard vive en el
+  layout `src/app/admin/(panel)/layout.tsx` y **todas** las rutas
+  `/api/admin/*` lo vuelven a verificar (401 sin sesión).
+- **Validación**: schemas **zod** en servidor (422 con detalle por campo).
+  **Los totales, tallos, vencimientos y la ETA se calculan siempre en
+  servidor** — el frontend no decide precios ni fechas.
+- **Inventario**: descuenta al emitir el pedido y devuelve al cancelar; no
+  se puede pedir más cajas que la disponibilidad ni por debajo del mínimo
+  (409 en `/api/orders`).
+- **Idempotencia**: confirmar pago dos veces no duplica eventos ni retasa la
+  ETA.
+- **Seguimiento privado**: `/api/track` solo responde cuando número de
+  pedido y correo coinciden con un pedido existente (404 en caso contrario).
 
 ---
 
-## 6) Decisiones de diseño documentadas
-
-Se pidió “tomar la decisión más razonable” en lo no especificado:
+## 7) Decisiones de diseño documentadas
 
 | Tema | Decisión | Justificación |
 |---|---|---|
-| **Idioma público** | Inglés | El comprador objetivo es un mayorista/distribuidor de EE. UU.; convierte mejor navegar en su idioma. El panel admin está en español (equipo interno colombiano). |
-| **Idioma del admin** | Español | Operadores internos; reduce fricción en la operación diaria. |
-| **Moneda base de almacenamiento** | **USD** | Los precios de catálogo y facturación de exportación se manejan en USD; COP solo se muestra como conversión con `EXCHANGE_RATE_COP`. Cada pedido guarda la tasa del día del pago. |
-| **Tasa de cambio** | Variable de entorno | Sencilla de configurar para demo; en producción se conectaría a la TRM diaria (SICOEX / datos.gov.co). |
-| **Presentación** | Paquete cerrado de **200 tallos** | Única unidad de venta exigida por el negocio; el carrito solo avanza en múltiplos de paquete. |
-| **Formato de imágenes** | URLs pasadas por admin | Se respetó el requisito: el admin pega URLs (externas o locales `/demo-flowers/...`); hay fallback si una imagen no carga. |
-| **Estatus cancelable** | Desde `pendiente` y `confirmado` | Una vez «en tránsito» la carga ya está embarcada; cancelar operacionalmente no procede (fácil de cambiar en `ALLOWED_TRANSITIONS`). |
-| **Flete** | Incluido en el precio (demo) | Simplifica el demo real de producción: se agregaría `shippingUSD` por peso/cajas. |
-| **Estética** | Verde follaje + rosa clavel, serif elegante | Naturaleza floral, sobria, contraste y legibilidad AA en móvil/escritorio. |
+| **Idioma público** | Inglés por defecto + botón ES | El comprador objetivo es un mayorista de EE. UU.; el equipo de Janida revisa el sitio en español con un clic (cookie `janida_lang`). |
+| **Pago** | Factura B2B, **sin tarjetas** | Es la forma real de operar del negocio mayorista: prepago o crédito (net 30/60/90) con factura comercial. |
+| **Moneda** | USD base; COP informativo | La facturación de exportación es en USD; el COP solo se muestra con la tasa de `settings`. |
+| **Unidad de venta** | **Caja entera sellada de 200 tallos** | Única unidad del negocio; el carrito y el checkout solo avanzan en múltiplos del mínimo. |
+| **ETA** | Pago + 4 días (2 recogida/prep + 2 vuelo) | Los tiempos reales que describe la empresa; las incidencias la corren +3/+4 días. |
+| **Cancelación** | Solo antes de aerolínea | Después de la entrega a la aerolínea la carga está embarcada. |
+| **Marcadores de contacto** | `+1 (000) 000-0000`, `contact@janida.example` | Marcadores para reemplazar por los datos reales de Ventas EE. UU. (ver `.env.example`). |
+| **Estética** | Verde follaje + rosa clavel, serif elegante | Naturaleza floral, sobria, contraste AA. |
 
 ---
 
-## 7) Estructura del código
+## 8) Estructura del código
 
 ```
 janida-sas/
 ├─ data/
-│  ├─ demo-seed.json          # semilla de datos demo (productora de db.json)
-│  └─ db.json                 # almacén generado (se re-crea con demo:reset)
-├─ docs/
-│  └─ STRIPE-INTEGRATION.md   # guía para conectar Stripe real
-├─ public/demo-flowers/       # imágenes SVG de demo (catálogo)
-├─ scripts/                   # utilidades de demo y de operación
+│  ├─ demo-seed.json          # semilla (npm run seed) — datos de ejemplo
+│  └─ db.json                 # almacén activo (npm run demo:reset restaura)
+├─ public/
+│  ├─ carnations/             # FOTOS REALES de claveles (23, origen src/img)
+│  └─ demo-flowers/           # SVG placeholder (fallback si una URL falla)
+├─ scripts/
+│  ├─ i18n.py                 # DICCIONARIO EN/ES → src/lib/i18n.json
+│  ├─ seed.js                 # generador de la semilla (~40–45 pedidos/12 m)
+│  ├─ reset-demo-data.mjs     # restaura db.json
+│  ├─ make-svg-images.mjs     # imágenes SVG
+│  └─ hash-password.mjs       # hash scrypt para ADMIN_PASSWORD_HASH
 ├─ src/
 │  ├─ app/
-│  │  ├─ (public)/            # sitio público (aspect de comprador)
-│  │  │  ├─ page.tsx          # presentación corporativa completa
-│  │  │  ├─ catalog/          # catálogo con filtros y galería
-│  │  │  ├─ cart/             # carrito persistente
-│  │  │  ├─ checkout/         # datos del comprador (EE. UU.)
-│  │  │  ├─ pay/[pid]/        # hoja de pago simulada MockPay
-│  │  │  └─ orders/[id]/      # confirmación pública del pedido
+│  │  ├─ (public)/            # sitio público (EN por defecto / ES por cookie)
+│  │  │  ├─ page.tsx          # presentación corporativa + contacto
+│  │  │  ├─ catalog/          # catálogo + ficha (tabla «Cómo se vende»)
+│  │  │  ├─ cart/  checkout/  # carrito y checkout B2B con factura
+│  │  │  ├─ orders/[id]/      # confirmación del pedido
+│  │  │  └─ track/            # seguimiento público (timeline vertical)
 │  │  ├─ admin/
 │  │  │  ├─ login/            # acceso del único administrador
-│  │  │  └─ (panel)/          # guard + dashboard + productos + pedidos
-│  │  ├─ api/                 # rutas: meta, products, contact, auth,
-│  │  │                       # checkout, payments, admin/*
+│  │  │  └─ (panel)/          # dashboard (métricas + simulador), pedidos
+│  │  │                       # (acciones + incidencias), productos (CRUD)
+│  │  ├─ api/                 # meta, orders, track, contact, lang/[to],
+│  │  │                       # admin/* (métricas, pedidos, productos)
 │  │  ├─ globals.css          # sistema de diseño (tokens + componentes)
-│  │  └─ layout.tsx, providers.tsx
+│  │  └─ layout.tsx, providers.tsx (Lang/Cart/Rate)
 │  └─ lib/
 │     ├─ config.ts            # variables de entorno centralizadas
-│     ├─ store.ts             # almacén de datos (único punto de acceso)
-│     ├─ types.ts             # tipos de dominio (contratos de la “BD”)
-│     ├─ password.ts, auth.ts # hash scrypt + sesión firmada
-│     ├─ validation.ts        # schemas zod (cliente y servidor)
-│     ├─ payments.ts          # gateway SIMULADO MockPay
-│     ├─ orders.ts            # creación de pedidos + transiciones
-│     └─ metrics.ts           # cálculo de métricas del dashboard
+│     ├─ i18n.ts              # t() + getLangCookie() (server)
+│     ├─ i18n.json            # generado desde scripts/i18n.py
+│     ├─ money.ts             # format_money() — ÚNICO formateador de dinero
+│     ├─ store.ts             # almacén JSON (único punto de acceso)
+│     ├─ types.ts             # dominio: escalera de 10 estados, cajas, etc.
+│     ├─ validation.ts        # schemas zod
+│     ├─ orders.ts            # emitter + escalera + incidencias + lookup
+│     ├─ metrics.ts           # motor de métricas del dashboard
+│     └─ auth.ts, password.ts # sesión firmada + hash scrypt
 └─ .env.example               # documentación de variables
 ```
 
 Stack: **Next.js 15 (App Router) + React 19 + TypeScript + zod**. Sin base
-de datos; el CSS es artesanal (sin framework UI) para mantener el paquete
-ligero y el estilo 100 % controlado.
+de datos; CSS artesanal (sin framework UI).
 
 ---
 
-## 8) Notas para producción
+## 10) Despliegue en Vercel
 
-- Sustituir `data/db.json` por una base de datos real (ver §4).
-- Montar Stripe siguiendo la guía `docs/STRIPE-INTEGRATION.md`.
-- Correos transaccionales de confirmación (hoy solo se registra el pedido).
- Proteger el endpoint público `/api/orders/[id]` si el id de pedido en
- demo no fuera adecuado (hoy se asume link privado al comprador; un paso
- de “magic link” sería el reemplazo).
-- Preparar la carga de fotos reales del catálogo, y fichas ICA/
-  Florverde visibles por variedad si el cliente lo requiere (demo).
+El proyecto está listo para Vercel (Next.js 15, se detecta
+automáticamente), con dos particularidades por ser el almacén de
+datos un archivo JSON:
+
+**Almacén en serverless.** El filesystem de Vercel es de solo
+lectura. El store detecta `VERCEL=1` y trabaja sobre una copia en
+`/tmp/janida-data`: se auto-siembra desde `data/demo-seed.json`
+(incluida en el bundle vía `outputFileTracingIncludes` de
+`next.config.mjs`) y las escrituras (checkout, admin, contacto)
+funcionan, pero son **efímeras** — se pierden al ciclar la
+instancia. Suficiente para el sitio B2B de demostración con pedidos
+simulados; si se necesita persistencia real:
+reimplementar `src/lib/store.ts` (mismas firmas) sobre una BD
+gestionada (p. ej. Neon/Postgres en el marketplace de Vercel), sin
+tocar el resto del código.
+
+**Variables de entorno.** Configurar en Vercel → Project → Settings
+→ Environment Variables (Production):
+
+| Variable | Valor |
+|---|---|
+| `ADMIN_EMAIL` | p. ej. `admin@janida.co` |
+| `ADMIN_PASSWORD_HASH` | hash scrypt del password (`npm run hash:password -- "clave"`). **Ojo:** en el panel de Vercel va SIN escapar los `$` (el escape `\$` solo aplica a archivos `.env`) |
+| `ADMIN_SESSION_SECRET` | 32+ caracteres aleatorios (`openssl rand -hex 32`) |
+| `EXCHANGE_RATE_COP` | p. ej. `3800` |
+| `LOW_STOCK_THRESHOLD_BOXES` | `20` |
+
+(No hay claves de pasarela de pago: el checkout es factura B2B con
+crédito 30/60/90.)
+
+**Pasos.**
+1. Hacer commit de los cambios y `git push github main` (remoto:
+   `git@github.com:Gjaset/janida.git`).
+2. En vercel.com → Add New → Project → importar `Gjaset/janida`.
+3. Framework Preset: Next.js (autodetectado). Build / Start:
+   por defecto (`next build` / `next start` → serverless). Node:
+   >= 20 (fijado en `engines`).
+4. Añadir las variables de entorno de la tabla.
+5. Deploy. Al final cada URL sirve: `/`, `/catalog`, fichas,
+   `/track`, `/admin`, y las fotos de `public/carnations/`.
+
+---
+
+## 11) Notas para producción
+
+- Sustituir `data/db.json` por una base de datos real (reimplementar
+  `src/lib/store.ts` con las mismas firmas).
+- Los consumos de la API pública (`/api/orders`, `/api/track`,
+  `/api/contact`) conviene protegerlos con rate-limit en producción.
+- Correos transaccionales: hoy la factura «se emite» en el sistema; el paso
+  de envío real del PDF de factura y del magic link de seguimiento queda
+  como siguiente integración.
+- Reemplazar los marcadores de contacto (`+1 (000) 000-0000`,
+  `contact@janida.example`) por los datos reales de Ventas EE. UU.
+- Cargar fotos reales del catálogo y las fichas ICA/Florverde por variedad
+  cuando el cliente las comparta.

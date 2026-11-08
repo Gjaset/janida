@@ -2,6 +2,7 @@
 node_modules/
 
 # Next.js
+tsconfig.tsbuildinfo
 .next/
 out/
 next-env.d.ts
@@ -21,3 +22,5 @@ data/db.json
 # Logs
 npm-debug.log*
 *.log
+# Editor local
+.vscode/
